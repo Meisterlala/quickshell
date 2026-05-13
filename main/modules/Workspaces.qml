@@ -1,4 +1,5 @@
 import "../components"
+import ".."
 import QtQuick
 import Quickshell.Hyprland
 
@@ -27,16 +28,22 @@ Row {
 
     spacing: 4
 
+    Theme {
+        id: theme
+    }
+
     Repeater {
         model: Hyprland.workspaces
 
         ModulePill {
             required property var modelData
 
+            barWindow: root.barWindow
             text: root.workspaceText(modelData)
             moduleClass: modelData.urgent ? "critical" : ""
             visible: root.monitorMatches(modelData)
-            color: modelData.active ? "#585b70" : (modelData.toplevels && modelData.toplevels.values.length > 0 ? "#55313244" : "#22313244")
+            color: modelData.active ? theme.surface2 : (modelData.toplevels && modelData.toplevels.values.length > 0 ? theme.alpha(theme.surface0, 0.8) : theme.alpha(theme.surface0, 0.2))
+            border.color: modelData.toplevels && modelData.toplevels.values.length > 0 ? theme.alpha(theme.text, 0.1) : "transparent"
             onClicked: modelData.activate()
         }
 

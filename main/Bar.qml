@@ -30,6 +30,7 @@ Scope {
             required property var modelData
 
             screen: modelData
+            height: 38
             implicitHeight: 38
             color: "transparent"
 
@@ -41,7 +42,7 @@ Scope {
 
             Rectangle {
                 anchors.fill: parent
-                color: theme.alpha(theme.base, 0.4)
+                color: theme.alpha(theme.base, 0.25)
             }
 
             Row {
@@ -50,7 +51,7 @@ Scope {
                 anchors.left: parent.left
                 anchors.leftMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4
+                spacing: 8
 
                 Workspaces {
                     barWindow: bar
@@ -69,9 +70,10 @@ Scope {
                 anchors.right: parent.right
                 anchors.rightMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 4
+                spacing: 8
 
                 NotificationModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                 }
 
@@ -81,6 +83,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "fritz-traffic"
@@ -90,6 +93,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "nvidia-driver"
@@ -98,6 +102,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "systemd-failed-units"
@@ -107,6 +112,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "scrcpy-active"
@@ -116,23 +122,36 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "updates"
                     command: "/home/misti/.config/waybar/arch_updates.py"
                     interval: 900000
+                    format: "{} {icon}"
+                    formatIcons: ({
+                        "updates": "󱍷",
+                        "normal": "󱍷",
+                        "warning": "󱍷",
+                        "critical": "󱍷",
+                        "updated": "󰒘",
+                        "error": ""
+                    })
                     onClickCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "codex"
                     command: "/home/misti/.config/waybar/codex_usage.py"
                     interval: 300000
+                    format: "{} 󱙺"
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
                     moduleName: "habits"
@@ -142,27 +161,33 @@ Scope {
                 }
 
                 Audio {
+                    barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "load"
                     command: "awk '{print $1 \" \" $2 \" \" $3}' /proc/loadavg"
                     interval: 10000
                     parseJson: false
+                    backgroundVisible: false
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "hypridle"
                     command: "/home/misti/.config/waybar/idle_inhibit.py"
                     interval: 5000
+                    format: "{} 󰒲"
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "gpu"
@@ -172,6 +197,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "cpu"
@@ -181,6 +207,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "memory"
@@ -190,6 +217,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "k8s-alerts"
@@ -198,6 +226,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "weight"
@@ -207,6 +236,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "sleep"
@@ -215,6 +245,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "garage-longhorn"
@@ -223,6 +254,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "garage-velero"
@@ -231,6 +263,7 @@ Scope {
                 }
 
                 ScriptModule {
+                    barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
                     moduleName: "garage-kopia"

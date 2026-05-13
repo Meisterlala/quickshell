@@ -1,4 +1,5 @@
 import "../components"
+import ".."
 import QtQuick
 import Quickshell
 
@@ -17,9 +18,14 @@ Item {
         precision: SystemClock.Minutes
     }
 
+    Theme {
+        id: theme
+    }
+
     ModulePill {
         id: pill
 
+        barWindow: root.barWindow
         text: Qt.formatDateTime(clock.date, "hh:mm") + " "
         onClicked: root.popupOpen = !root.popupOpen
     }
@@ -48,16 +54,16 @@ Item {
 
                 Text {
                     text: Qt.formatDateTime(clock.date, "dddd, dd.MM.yyyy")
-                    color: "#cdd6f4"
-                    font.family: "FiraCode Nerd Font"
-                    font.pixelSize: 18
+                    color: theme.text
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.popupTitleFontPixelSize
                 }
 
                 Text {
                     text: Qt.formatDateTime(clock.date, "hh:mm")
-                    color: "#f5e0dc"
-                    font.family: "FiraCode Nerd Font"
-                    font.pixelSize: 44
+                    color: theme.rosewater
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.popupLargeFontPixelSize
                     font.bold: true
                 }
 

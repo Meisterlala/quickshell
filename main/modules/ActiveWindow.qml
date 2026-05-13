@@ -1,3 +1,4 @@
+import ".."
 import QtQuick
 import Quickshell.Hyprland
 
@@ -14,10 +15,14 @@ Text {
     }
 
     text: cleanTitle(Hyprland.activeToplevel ? Hyprland.activeToplevel.title : "")
-    color: "#cdd6f4"
-    font.family: "FiraCode Nerd Font"
-    font.pixelSize: 14
+    color: theme.text
+    font.family: theme.fontFamily
+    font.pixelSize: theme.activeWindowFontPixelSize
     elide: Text.ElideRight
     horizontalAlignment: Text.AlignHCenter
     width: Math.min(maxWidth, implicitWidth)
+
+    Theme {
+        id: theme
+    }
 }

@@ -15,8 +15,53 @@ ModulePill {
     property string onClickCommand: ""
     property string onRightClickCommand: ""
     property string textOverride: ""
+    property string format: "{}"
+    property string icon: ""
+    property var formatIcons: ({})
     property string currentText: textOverride
+    property string currentTooltip: ""
     property string currentClass: ""
+
+    function classList(value) {
+        if (Array.isArray(value))
+            return value.map(item => String(item));
+
+        if (value === undefined || value === null || String(value).length === 0)
+            return [];
+
+        return [String(value)];
+    }
+
+    function decodeEntities(value) {
+        return value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&apos;/g, "'");
+    }
+
+    function plainTooltip(value) {
+        return decodeEntities(String(value ?? "").replace(/\r/g, "\n").replace(/<[^>]*>/g, "").trim());
+    }
+
+    function iconFor(parsed, classes) {
+        if (icon.length > 0)
+            return icon;
+
+        const candidates = [];
+        if (parsed.alt !== undefined && parsed.alt !== null)
+            candidates.push(String(parsed.alt));
+
+        for (const name of classes)
+            candidates.push(name);
+
+        for (const name of candidates) {
+            if (formatIcons && formatIcons[name] !== undefined)
+                return String(formatIcons[name]);
+        }
+
+        return "";
+    }
+
+    function applyFormat(value, moduleIcon) {
+        return format.replace(/\{\}/g, value).replace(/\{icon\}/g, moduleIcon);
+    }
 
     function runCommand(commandText) {
         if (commandText.length === 0)
@@ -40,26 +85,36 @@ ModulePill {
         const trimmed = output.trim();
         if (trimmed.length === 0) {
             currentText = "";
+            currentTooltip = "";
             currentClass = "";
             return ;
         }
         if (!parseJson) {
-            currentText = trimmed;
+            currentText = applyFormat(trimmed, icon);
+            currentTooltip = "";
             currentClass = "";
             return ;
         }
         try {
             const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
             const parsed = JSON.parse(lines[lines.length - 1]);
-            currentText = String(parsed.text ?? "");
-            currentClass = Array.isArray(parsed.class) ? parsed.class[0] ?? "" : String(parsed.class ?? "");
+            const classes = classList(parsed.class);
+            const rawText = String(parsed.text ?? "");
+            if (rawText.length === 0 && hideEmptyText)
+                currentText = "";
+            else
+                currentText = applyFormat(rawText, iconFor(parsed, classes)).trim();
+            currentTooltip = plainTooltip(parsed.tooltip ?? "");
+            currentClass = classes[0] ?? "";
         } catch (error) {
-            currentText = trimmed;
+            currentText = applyFormat(trimmed, icon);
+            currentTooltip = "";
             currentClass = "error";
         }
     }
 
     text: currentText
+    tooltipText: currentTooltip
     moduleClass: currentClass
     visible: moduleVisible && (!hideEmptyText || currentText.length > 0)
     onClicked: (button) => {

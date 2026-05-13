@@ -29,7 +29,7 @@ Row {
             }
 
             width: 24
-            height: 30
+            height: 34
 
             IconImage {
                 anchors.centerIn: parent
@@ -131,8 +131,8 @@ Row {
                                     text: menuEntry.hasCheckmark ? "✓" : ""
                                     visible: menuEntry.hasCheckmark && !menuEntry.modelData.isSeparator
                                     color: theme.green
-                                    font.family: "FiraCode Nerd Font"
-                                    font.pixelSize: 13
+                                    font.family: theme.fontFamily
+                                    font.pixelSize: theme.menuFontPixelSize
                                 }
 
                                 IconImage {
@@ -158,8 +158,8 @@ Row {
                                     text: menuEntry.modelData.text
                                     visible: !menuEntry.modelData.isSeparator
                                     color: menuEntry.modelData.enabled ? theme.text : theme.overlay1
-                                    font.family: "FiraCode Nerd Font"
-                                    font.pixelSize: 13
+                                    font.family: theme.fontFamily
+                                    font.pixelSize: theme.menuFontPixelSize
                                     elide: Text.ElideRight
                                 }
 
@@ -172,8 +172,8 @@ Row {
                                     text: menuEntry.modelData.hasChildren ? "›" : ""
                                     visible: menuEntry.modelData.hasChildren && !menuEntry.modelData.isSeparator
                                     color: theme.subtext0
-                                    font.family: "FiraCode Nerd Font"
-                                    font.pixelSize: 14
+                                    font.family: theme.fontFamily
+                                    font.pixelSize: theme.barFontPixelSize
                                 }
 
                                 MouseArea {

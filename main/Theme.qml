@@ -15,6 +15,14 @@ QtObject {
     readonly property string base: "#1e1e2e"
     readonly property string mantle: "#181825"
     readonly property string crust: "#11111b"
+    readonly property string fontFamily: "FiraCode Nerd Font"
+    readonly property int barFontPixelSize: 14
+    readonly property int activeWindowFontPixelSize: 16
+    readonly property int tooltipFontPixelSize: 13
+    readonly property int menuFontPixelSize: 13
+    readonly property int notificationFontPixelSize: 21
+    readonly property int popupTitleFontPixelSize: 18
+    readonly property int popupLargeFontPixelSize: 44
 
     function alpha(hex, opacity) {
         const clean = hex.replace("#", "");
