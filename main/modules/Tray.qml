@@ -54,11 +54,22 @@ Row {
             PopupWindow {
                 id: menuWindow
 
+                readonly property int outerMargin: 8
+                readonly property int horizontalMargin: 4
+                readonly property int entryHorizontalPadding: 12
+                readonly property int entrySpacing: 8
+                readonly property int entryHeight: 30
+                readonly property int separatorWidth: 164
+                readonly property int separatorHeight: 9
+                readonly property int iconSize: 16
+                readonly property int targetWidth: Math.round(root.barWindow.width * 0.33)
+                readonly property int maxTextWidth: targetWidth - outerMargin * 2 - entryHorizontalPadding * 2
+
                 anchor.window: root.barWindow
-                anchor.rect.x: Math.max(8, Math.min(root.barWindow.width - width - 8, trayItem.mapToItem(null, 0, 0).x))
-                anchor.rect.y: root.barWindow.height + 8
-                implicitWidth: Math.max(180, Math.min(root.barWindow.width - 16, menuContent.implicitWidth + 16))
-                implicitHeight: menuContent.implicitHeight + 16
+                anchor.rect.x: Math.max(outerMargin, Math.min(root.barWindow.width - width - outerMargin, trayItem.mapToItem(null, 0, 0).x))
+                anchor.rect.y: root.barWindow.height + outerMargin
+                implicitWidth: Math.max(220, Math.min(targetWidth, menuContent.implicitWidth + horizontalMargin * 2))
+                implicitHeight: menuContent.implicitHeight + outerMargin * 2
                 color: "transparent"
                 visible: trayItem.menuOpen
                 grabFocus: true
@@ -74,8 +85,14 @@ Row {
                     Column {
                         id: menuContent
 
-                        anchors.fill: parent
-                        anchors.margins: 8
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.topMargin: menuWindow.outerMargin
+                        anchors.bottomMargin: menuWindow.outerMargin
+                        anchors.leftMargin: menuWindow.horizontalMargin
+                        anchors.rightMargin: menuWindow.horizontalMargin
 
                         Repeater {
                             model: menuOpener.children
@@ -85,9 +102,14 @@ Row {
 
                                 required property var modelData
 
-                                implicitWidth: modelData.isSeparator ? 164 : 36 + checkmark.implicitWidth + (icon.visible ? icon.width + entryContent.spacing : 0) + title.implicitWidth + arrow.implicitWidth
+                                readonly property bool hasCheckmark: modelData.checkState === Qt.Checked
+                                readonly property bool hasIcon: modelData.icon.length > 0
+                                readonly property int leadingWidth: (hasCheckmark ? checkmark.implicitWidth + menuWindow.entrySpacing : 0) + (hasIcon ? menuWindow.iconSize + menuWindow.entrySpacing : 0)
+                                readonly property int trailingWidth: modelData.hasChildren ? menuWindow.entrySpacing + arrow.implicitWidth : 0
+
+                                implicitWidth: modelData.isSeparator ? menuWindow.separatorWidth : menuWindow.entryHorizontalPadding * 2 + leadingWidth + Math.min(menuWindow.maxTextWidth, title.implicitWidth) + trailingWidth
                                 width: menuContent.width
-                                height: modelData.isSeparator ? 9 : 30
+                                height: modelData.isSeparator ? menuWindow.separatorHeight : menuWindow.entryHeight
                                 radius: 7
                                 color: entryMouse.containsMouse && modelData.enabled && !modelData.isSeparator ? theme.alpha(theme.surface1, 0.85) : "transparent"
 
@@ -100,59 +122,58 @@ Row {
                                     color: theme.alpha(theme.text, 0.12)
                                 }
 
-                                Row {
-                                    id: entryContent
+                                Text {
+                                    id: checkmark
 
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
-                                    spacing: 8
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: menuWindow.entryHorizontalPadding
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: menuEntry.hasCheckmark ? "✓" : ""
+                                    visible: menuEntry.hasCheckmark && !menuEntry.modelData.isSeparator
+                                    color: theme.green
+                                    font.family: "FiraCode Nerd Font"
+                                    font.pixelSize: 13
+                                }
+
+                                IconImage {
+                                    id: icon
+
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: menuWindow.entryHorizontalPadding + (menuEntry.hasCheckmark ? checkmark.implicitWidth + menuWindow.entrySpacing : 0)
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: menuWindow.iconSize
+                                    height: menuWindow.iconSize
+                                    source: menuEntry.modelData.icon
+                                    visible: menuEntry.hasIcon && !menuEntry.modelData.isSeparator
+                                }
+
+                                Text {
+                                    id: title
+
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: menuWindow.entryHorizontalPadding + menuEntry.leadingWidth
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: menuWindow.entryHorizontalPadding + menuEntry.trailingWidth
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: menuEntry.modelData.text
                                     visible: !menuEntry.modelData.isSeparator
+                                    color: menuEntry.modelData.enabled ? theme.text : theme.overlay1
+                                    font.family: "FiraCode Nerd Font"
+                                    font.pixelSize: 13
+                                    elide: Text.ElideRight
+                                }
 
-                                    Text {
-                                        id: checkmark
+                                Text {
+                                    id: arrow
 
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: menuEntry.modelData.checkState === Qt.Checked ? "✓" : ""
-                                        visible: text.length > 0
-                                        color: theme.green
-                                        font.family: "FiraCode Nerd Font"
-                                        font.pixelSize: 13
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-
-                                    IconImage {
-                                        id: icon
-
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 16
-                                        height: 16
-                                        source: menuEntry.modelData.icon
-                                        visible: menuEntry.modelData.icon.length > 0
-                                    }
-
-                                    Text {
-                                        id: title
-
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: Math.min(root.barWindow.width * 0.9, implicitWidth)
-                                        text: menuEntry.modelData.text
-                                        color: menuEntry.modelData.enabled ? theme.text : theme.overlay1
-                                        font.family: "FiraCode Nerd Font"
-                                        font.pixelSize: 13
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Text {
-                                        id: arrow
-
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: menuEntry.modelData.hasChildren ? "›" : ""
-                                        color: theme.subtext0
-                                        font.family: "FiraCode Nerd Font"
-                                        font.pixelSize: 14
-                                    }
-
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: menuWindow.entryHorizontalPadding
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: menuEntry.modelData.hasChildren ? "›" : ""
+                                    visible: menuEntry.modelData.hasChildren && !menuEntry.modelData.isSeparator
+                                    color: theme.subtext0
+                                    font.family: "FiraCode Nerd Font"
+                                    font.pixelSize: 14
                                 }
 
                                 MouseArea {
