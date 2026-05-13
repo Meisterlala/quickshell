@@ -1,4 +1,5 @@
 import ".."
+import "../services"
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -78,6 +79,10 @@ Rectangle {
         id: theme
     }
 
+    WorkspaceIconMap {
+        id: iconMap
+    }
+
     Row {
         id: icons
 
@@ -89,6 +94,7 @@ Rectangle {
 
             Item {
                 required property var modelData
+                readonly property string glyph: iconMap.iconFor(modelData)
                 readonly property string iconSource: root.desktopIcon(modelData)
 
                 width: root.iconSize
@@ -100,7 +106,17 @@ Rectangle {
                     asynchronous: true
                     fillMode: Image.PreserveAspectFit
                     mipmap: true
-                    visible: parent.iconSource.length > 0
+                    visible: parent.glyph.length === 0 && parent.iconSource.length > 0
+                }
+
+                Text {
+                    anchors.centerIn: parent
+                    text: parent.glyph
+                    color: root.workspace && root.workspace.urgent ? theme.red : theme.text
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.barFontPixelSize
+                    textFormat: Text.PlainText
+                    visible: parent.glyph.length > 0
                 }
 
                 Text {
@@ -110,7 +126,7 @@ Rectangle {
                     font.family: theme.fontFamily
                     font.pixelSize: theme.barFontPixelSize
                     textFormat: Text.PlainText
-                    visible: parent.iconSource.length === 0
+                    visible: parent.glyph.length === 0 && parent.iconSource.length === 0
                 }
             }
 
