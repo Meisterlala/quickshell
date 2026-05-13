@@ -61,7 +61,8 @@ Scope {
 
             ActiveWindow {
                 anchors.centerIn: parent
-                maxWidth: Math.max(280, parent.width * 0.36)
+                barWindow: bar
+                maxWidth: Math.max(280, parent.width * 0.5)
             }
 
             Row {
