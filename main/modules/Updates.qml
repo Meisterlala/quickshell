@@ -21,6 +21,8 @@ ClippingRectangle {
     property var items: []
     property int truncated: 0
     property string errorText: ""
+    property bool stale: false
+    property string status: "ok"
     readonly property bool hasUpdates: count > 0
     readonly property bool hasError: errorText.length > 0 || state === "error"
     readonly property string accent: hasError ? theme.red : state === "critical" ? theme.red : state === "warning" ? theme.yellow : theme.sky
@@ -85,6 +87,8 @@ ClippingRectangle {
             counts = parsed.counts || ({});
             items = parsed.items || [];
             truncated = Number(parsed.truncated || 0);
+            stale = Boolean(parsed.stale || false);
+            status = String(parsed.status || "ok");
             errorText = String(parsed.error || "").trim();
         } catch (error) {
             errorText = trimmed;
@@ -204,7 +208,7 @@ ClippingRectangle {
                                 color: theme.subtext0
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.tooltipFontPixelSize
-                                text: "Left-click to run paru -Syu"
+                                text: root.stale ? "Last known state while updates are running" : "Left-click to run paru -Syu"
                             }
                         }
                     }
@@ -431,6 +435,8 @@ ClippingRectangle {
             count = 0;
             items = [];
             counts = ({});
+            stale = false;
+            status = "ok";
             errorText = "";
         }
     }

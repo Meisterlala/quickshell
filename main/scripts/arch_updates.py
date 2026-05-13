@@ -4,12 +4,18 @@ import os
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 
 PARU_TIMEOUT = int(os.environ.get("QUICKSHELL_UPDATES_TIMEOUT", "120"))
 MAX_ITEMS = int(os.environ.get("QUICKSHELL_UPDATES_MAX_ITEMS", "160"))
 LINE_RE = re.compile(
     r"^(?P<pkg>\S+)\s+(?P<old>\S+)\s+->\s+(?P<new>\S+)(?:\s+\[(?P<flag>[^\]]+)\])?$"
+)
+CACHE_PATH = (
+    Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+    / "quickshell"
+    / "arch-updates.json"
 )
 
 
@@ -19,6 +25,35 @@ def run_cmd(args, timeout=PARU_TIMEOUT):
         return proc.returncode, proc.stdout, proc.stderr
     except Exception as exc:
         return 1, "", str(exc)
+
+
+def load_cache():
+    try:
+        return json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def save_cache(payload):
+    try:
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CACHE_PATH.write_text(json.dumps(payload), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def is_transient_error(text):
+    lowered = text.lower()
+    needles = [
+        "could not lock database",
+        "failed to init transaction",
+        "unable to lock database",
+        "database is locked",
+        "failed to synchronize",
+        "timed out",
+        "timeout",
+    ]
+    return any(needle in lowered for needle in needles)
 
 
 def query_repo_updates():
@@ -113,10 +148,18 @@ def main():
     aur_code, aur_out, aur_err = run_cmd(["paru", "-Qua", "--devel", "--color", "never"])
 
     if repo_code != 0 and aur_code != 0:
+        error = (repo_err or aur_err or "Failed to query updates").strip()
+        cached = load_cache()
+        if cached and is_transient_error(error):
+            cached["stale"] = True
+            cached["status"] = "updating"
+            print(json.dumps(cached))
+            return
+
         print(
             json.dumps(
                 {
-                    "error": (repo_err or aur_err or "Failed to query updates").strip(),
+                    "error": error,
                     "count": 0,
                     "state": "error",
                     "counts": {},
@@ -133,17 +176,17 @@ def main():
 
     count = len(items)
     state = "critical" if count >= 50 else "warning" if count >= 15 else "normal"
-    print(
-        json.dumps(
-            {
-                "count": count,
-                "state": "updated" if count == 0 else state,
-                "counts": counts,
-                "items": items[:MAX_ITEMS],
-                "truncated": max(0, count - MAX_ITEMS),
-            }
-        )
-    )
+    payload = {
+        "count": count,
+        "state": "updated" if count == 0 else state,
+        "counts": counts,
+        "items": items[:MAX_ITEMS],
+        "truncated": max(0, count - MAX_ITEMS),
+        "stale": False,
+        "status": "ok",
+    }
+    save_cache(payload)
+    print(json.dumps(payload))
 
 
 if __name__ == "__main__":
