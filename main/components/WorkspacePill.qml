@@ -41,30 +41,7 @@ Rectangle {
             return "";
 
         const app = appClass(toplevel);
-        const entry = desktopEntry(toplevel);
-        if (entry && entry.icon)
-            return Quickshell.iconPath(entry.icon, true);
-
         return app ? Quickshell.iconPath(app, true) : "";
-    }
-
-    function desktopEntry(toplevel) {
-        const app = appClass(toplevel);
-        const byId = DesktopEntries.byId(app) || DesktopEntries.byId(app + ".desktop");
-        if (byId)
-            return byId;
-
-        const normalizedApp = normalizeDesktopKey(app);
-        for (const entry of DesktopEntries.applications.values) {
-            if (normalizeDesktopKey(entry.id) === normalizedApp || normalizeDesktopKey(entry.startupClass) === normalizedApp || normalizeDesktopKey(entry.name) === normalizedApp)
-                return entry;
-        }
-
-        return DesktopEntries.heuristicLookup(app) || DesktopEntries.heuristicLookup(toplevel.title || "");
-    }
-
-    function normalizeDesktopKey(value) {
-        return (value || "").toLowerCase().replace(/\.desktop$/, "");
     }
 
     width: Math.max(minimumWidth, icons.implicitWidth + horizontalPadding)
