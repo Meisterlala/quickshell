@@ -141,14 +141,9 @@ Scope {
                     onClickCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
                 }
 
-                ScriptModule {
+                CodexUsage {
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "codex"
-                    command: "/home/misti/.config/waybar/codex_usage.py"
-                    interval: 300000
-                    format: "{} 󱙺"
                 }
 
                 ScriptModule {
