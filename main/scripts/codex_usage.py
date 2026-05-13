@@ -4,6 +4,12 @@
 import datetime
 import json
 import subprocess
+import time
+
+
+CODEX_COMMAND = ["codex", "app-server"]
+CLIENT_INFO = {"name": "quickshell-codex-usage", "version": "1.0"}
+REQUEST_TIMEOUT_SECONDS = 15
 
 
 def human_delta(dt, now):
@@ -29,10 +35,8 @@ def human_delta(dt, now):
 
 
 def call_rate_limits():
-    import time
-
     proc = subprocess.Popen(
-        ["codex", "app-server"],
+        CODEX_COMMAND,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -51,13 +55,13 @@ def call_rate_limits():
                 "id": "1",
                 "method": "initialize",
                 "params": {
-                    "clientInfo": {"name": "quickshell-codex-usage", "version": "1.0"},
+                    "clientInfo": CLIENT_INFO,
                     "capabilities": {"experimentalApi": True},
                 },
             }
         )
 
-        deadline = time.time() + 15
+        deadline = time.time() + REQUEST_TIMEOUT_SECONDS
         initialized_sent = False
         while time.time() < deadline:
             assert proc.stdout is not None
@@ -85,8 +89,7 @@ def call_rate_limits():
                 res = msg.get("result") or {}
                 return (res.get("rateLimits") or {}), None
 
-        err = (proc.stderr.read() if proc.stderr else "").strip()
-        return None, err or "No account/rateLimits/read response from codex app-server"
+        return None, "No account/rateLimits/read response from codex app-server"
     finally:
         try:
             if proc.stdin is not None:
@@ -104,13 +107,20 @@ def call_rate_limits():
 
 
 def usage_window(label, window, now):
-    used = int(round(float((window or {}).get("usedPercent", 0))))
+    try:
+        used = int(round(float((window or {}).get("usedPercent", 0))))
+    except (TypeError, ValueError):
+        used = 0
+
     resets_at = (window or {}).get("resetsAt")
-    reset_dt = (
-        datetime.datetime.fromtimestamp(int(resets_at), datetime.timezone.utc)
-        if resets_at is not None
-        else None
-    )
+    try:
+        reset_dt = (
+            datetime.datetime.fromtimestamp(int(resets_at), datetime.timezone.utc)
+            if resets_at is not None
+            else None
+        )
+    except (TypeError, ValueError, OSError):
+        reset_dt = None
 
     return {
         "label": label,

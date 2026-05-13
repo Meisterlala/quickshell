@@ -12,6 +12,9 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 300000
     property string command: "/home/misti/.config/quickshell/main/scripts/codex_usage.py"
+    readonly property int compactHorizontalPadding: 20
+    readonly property int compactHeight: 34
+    readonly property int cornerRadius: 8
     property var primary: ({
         "label": "5h",
         "usedPercent": 0,
@@ -34,10 +37,11 @@ ClippingRectangle {
     readonly property bool hasData: errorText.length === 0
     readonly property real primaryPercent: clampPercent(primary.usedPercent)
     readonly property real secondaryPercent: clampPercent(secondary.usedPercent)
-    readonly property bool hasCredits: Boolean(credits.hasCredits || credits.unlimited || credits.balance && String(credits.balance) !== "0")
+    readonly property bool hasCredits: Boolean(credits.hasCredits || credits.unlimited || (credits.balance && String(credits.balance) !== "0"))
     readonly property string accent: state === "critical" || errorText.length > 0 ? theme.red : state === "warning" ? theme.yellow : theme.sky
     readonly property string accentSoft: theme.alpha(String(accent), state === "normal" ? 0.3 : 0.42)
     readonly property bool tooltipVisible: mouse.containsMouse
+    readonly property string creditsText: credits.unlimited ? "credits: unlimited" : `credits balance: ${credits.balance ?? "n/a"}`
 
     function clampPercent(value) {
         return Math.max(0, Math.min(100, Number(value || 0)));
@@ -45,6 +49,10 @@ ClippingRectangle {
 
     function plainTooltip(value) {
         return String(value ?? "").replace(/\r/g, "\n").replace(/<[^>]*>/g, "").trim();
+    }
+
+    function resetText(windowData) {
+        return `resets in ${windowData.resetIn || "?"} at ${windowData.resetAt || "?"}`;
     }
 
     function refresh() {
@@ -79,9 +87,9 @@ ClippingRectangle {
         }
     }
 
-    implicitWidth: errorText.length > 0 ? errorLabel.implicitWidth + 24 : compactContent.implicitWidth + 20
-    implicitHeight: 34
-    radius: 8
+    implicitWidth: errorText.length > 0 ? errorLabel.implicitWidth + 24 : compactContent.implicitWidth + compactHorizontalPadding
+    implicitHeight: compactHeight
+    radius: cornerRadius
     color: mouse.containsMouse ? theme.surface2 : theme.alpha(theme.surface0, 0.28)
     border.color: theme.alpha(theme.text, 0.1)
     border.width: 1
@@ -92,18 +100,7 @@ ClippingRectangle {
         id: theme
     }
 
-    MouseArea {
-        id: mouse
-
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        hoverEnabled: true
-        onClicked: root.refresh()
-    }
-
     Rectangle {
-        id: compactFill
-
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -216,52 +213,20 @@ ClippingRectangle {
 
                 }
 
-                Column {
+                UsageDetail {
                     width: parent.width
-                    spacing: 3
-
-                    UsageRow {
-                        width: parent.width
-                        barHeight: 22
-                        fontPixelSize: 11
-                        labelWidth: 34
-                        label: "5h"
-                        percent: root.clampPercent(root.primary.usedPercent)
-                        accent: root.accent
-                        fillColor: root.accentSoft
-                    }
-
-                    Text {
-                        width: parent.width
-                        color: theme.subtext0
-                        font.family: theme.fontFamily
-                        font.pixelSize: theme.tooltipFontPixelSize
-                        text: `resets in ${root.primary.resetIn || "?"} at ${root.primary.resetAt || "?"}`
-                    }
+                    usage: root.primary
+                    percent: root.primaryPercent
+                    accent: root.accent
+                    fillColor: root.accentSoft
                 }
 
-                Column {
+                UsageDetail {
                     width: parent.width
-                    spacing: 3
-
-                    UsageRow {
-                        width: parent.width
-                        barHeight: 22
-                        fontPixelSize: 11
-                        labelWidth: 34
-                        label: "7d"
-                        percent: root.clampPercent(root.secondary.usedPercent)
-                        accent: root.accent
-                        fillColor: root.accentSoft
-                    }
-
-                    Text {
-                        width: parent.width
-                        color: theme.subtext0
-                        font.family: theme.fontFamily
-                        font.pixelSize: theme.tooltipFontPixelSize
-                        text: `resets in ${root.secondary.resetIn || "?"} at ${root.secondary.resetAt || "?"}`
-                    }
+                    usage: root.secondary
+                    percent: root.secondaryPercent
+                    accent: root.accent
+                    fillColor: root.accentSoft
                 }
 
                 Rectangle {
@@ -277,7 +242,7 @@ ClippingRectangle {
                     color: theme.subtext0
                     font.family: theme.fontFamily
                     font.pixelSize: theme.tooltipFontPixelSize
-                    text: root.credits.unlimited ? "credits: unlimited" : `credits balance: ${root.credits.balance ?? "n/a"}`
+                    text: root.creditsText
                 }
             }
 
@@ -285,16 +250,43 @@ ClippingRectangle {
 
     }
 
-    component UsageRow: Item {
+    component UsageDetail: Column {
+        id: detailRoot
+
+        required property var usage
+        required property real percent
+        required property string accent
+        required property string fillColor
+
+        spacing: 3
+
+        UsageBar {
+            width: parent.width
+            label: String(detailRoot.usage.label || "")
+            percent: detailRoot.percent
+            accent: detailRoot.accent
+            fillColor: detailRoot.fillColor
+        }
+
+        Text {
+            width: parent.width
+            color: theme.subtext0
+            font.family: theme.fontFamily
+            font.pixelSize: theme.tooltipFontPixelSize
+            text: root.resetText(detailRoot.usage)
+        }
+    }
+
+    component UsageBar: Item {
         id: rowRoot
 
         required property string label
         required property real percent
         required property string accent
         required property string fillColor
-        property int barHeight: 12
-        property int fontPixelSize: 9
-        property int labelWidth: 24
+        property int barHeight: 22
+        property int fontPixelSize: 11
+        property int labelWidth: 34
 
         height: barHeight
 
@@ -342,6 +334,16 @@ ClippingRectangle {
 
         }
 
+    }
+
+    MouseArea {
+        id: mouse
+
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        hoverEnabled: true
+        z: 10
+        onClicked: root.refresh()
     }
 
     Timer {
