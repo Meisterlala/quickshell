@@ -212,13 +212,9 @@ Scope {
                     parseJson: false
                 }
 
-                ScriptModule {
+                K8sAlerts {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "k8s-alerts"
-                    command: "/home/misti/.config/waybar/k8s-alerts.py"
-                    interval: 60000
                 }
 
                 ScriptModule {

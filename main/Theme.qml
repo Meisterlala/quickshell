@@ -25,7 +25,7 @@ QtObject {
     readonly property int popupLargeFontPixelSize: 44
 
     function alpha(hex, opacity) {
-        const clean = hex.replace("#", "");
+        const clean = String(hex).replace("#", "");
         const value = Math.round(opacity * 255).toString(16).padStart(2, "0");
         return `#${value}${clean}`;
     }
