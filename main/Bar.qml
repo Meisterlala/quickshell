@@ -30,7 +30,6 @@ Scope {
             required property var modelData
 
             screen: modelData
-            height: 38
             implicitHeight: 38
             color: "transparent"
 
@@ -165,17 +164,6 @@ Scope {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     ipc: root.ipc
-                    moduleName: "load"
-                    command: "awk '{print $1 \" \" $2 \" \" $3}' /proc/loadavg"
-                    interval: 10000
-                    parseJson: false
-                    backgroundVisible: false
-                }
-
-                ScriptModule {
-                    barWindow: bar
-                    moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
                     moduleName: "hypridle"
                     command: "/home/misti/.config/waybar/idle_inhibit.py"
                     interval: 5000
@@ -192,14 +180,10 @@ Scope {
                     parseJson: false
                 }
 
-                ScriptModule {
+                Cpu {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "cpu"
-                    command: "top -bn1 | awk '/Cpu\\(s\\)/ {printf \"%2d%% \", 100 - $8}'"
                     interval: 3000
-                    parseJson: false
                 }
 
                 ScriptModule {
