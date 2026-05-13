@@ -26,6 +26,9 @@ ModulePill {
     }
 
     function refresh() {
+        if (!moduleVisible)
+            return ;
+
         if (textOverride.length > 0) {
             currentText = textOverride;
             return ;
@@ -67,10 +70,17 @@ ModulePill {
 
     }
     Component.onCompleted: refresh()
+    onModuleVisibleChanged: {
+        if (moduleVisible)
+            refresh();
+        else if (hideEmptyText)
+            currentText = "";
+
+    }
 
     Timer {
         interval: root.interval
-        running: root.command.length > 0 && root.interval > 0
+        running: root.moduleVisible && root.command.length > 0 && root.interval > 0
         repeat: true
         onTriggered: root.refresh()
     }

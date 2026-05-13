@@ -67,15 +67,6 @@ Item {
                     color: "#3345475a"
                 }
 
-                Text {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    text: "Calendar grid and agenda go here next. This popup is already anchored to the clock and managed by Quickshell, not a Waybar tooltip."
-                    color: "#a6adc8"
-                    font.family: "FiraCode Nerd Font"
-                    font.pixelSize: 13
-                }
-
             }
 
         }
