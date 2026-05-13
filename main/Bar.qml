@@ -170,14 +170,11 @@ Scope {
                     format: "{} 󰒲"
                 }
 
-                ScriptModule {
+                Gpu {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "gpu"
-                    command: "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits | awk '{printf \"%2d%% 󰢮\", $1}'"
                     interval: 5000
-                    parseJson: false
+                    hoverInterval: 1000
                 }
 
                 Cpu {

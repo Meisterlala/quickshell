@@ -173,7 +173,7 @@ ClippingRectangle {
         loadRunner.exec(["sh", "-lc", loadCommand]);
     }
 
-    implicitWidth: usageLabel.implicitWidth + 20
+    implicitWidth: compactContent.implicitWidth + 20
     implicitHeight: 34
     radius: 8
     color: mouse.containsMouse ? theme.surface2 : theme.alpha(theme.surface0, 0.28)
@@ -186,15 +186,31 @@ ClippingRectangle {
         id: theme
     }
 
-    Text {
-        id: usageLabel
+    Row {
+        id: compactContent
 
         anchors.centerIn: parent
-        color: theme.classColor(root.usageClass(root.currentUsage))
-        font.family: theme.fontFamily
-        font.pixelSize: theme.barFontPixelSize
-        text: `${Math.round(root.currentUsage).toString().padStart(2, " ")}% `
-        textFormat: Text.PlainText
+        spacing: 6
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 28
+            color: theme.classColor(root.usageClass(root.currentUsage))
+            font.family: theme.fontFamily
+            font.pixelSize: theme.barFontPixelSize
+            horizontalAlignment: Text.AlignRight
+            text: `${Math.round(root.currentUsage).toString().padStart(2, " ")}%`
+            textFormat: Text.PlainText
+        }
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            color: theme.classColor(root.usageClass(root.currentUsage))
+            font.family: theme.fontFamily
+            font.pixelSize: theme.barFontPixelSize
+            text: ""
+            textFormat: Text.PlainText
+        }
     }
 
     PopupWindow {
