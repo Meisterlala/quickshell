@@ -22,7 +22,7 @@ ModulePill {
         if (commandText.length === 0)
             return ;
 
-        runner.exec(["sh", "-lc", commandText]);
+        actionRunner.exec(["sh", "-lc", commandText]);
     }
 
     function refresh() {
@@ -33,7 +33,7 @@ ModulePill {
             currentText = textOverride;
             return ;
         }
-        runCommand(command);
+        refreshRunner.exec(["sh", "-lc", command]);
     }
 
     function applyOutput(output) {
@@ -49,7 +49,8 @@ ModulePill {
             return ;
         }
         try {
-            const parsed = JSON.parse(trimmed);
+            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
+            const parsed = JSON.parse(lines[lines.length - 1]);
             currentText = String(parsed.text ?? "");
             currentClass = Array.isArray(parsed.class) ? parsed.class[0] ?? "" : String(parsed.class ?? "");
         } catch (error) {
@@ -86,12 +87,16 @@ ModulePill {
     }
 
     Process {
-        id: runner
+        id: refreshRunner
 
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
         }
 
+    }
+
+    Process {
+        id: actionRunner
     }
 
     Connections {

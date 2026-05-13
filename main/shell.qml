@@ -1,3 +1,5 @@
+//@ pragma UseQApplication
+
 import "./services"
 import Quickshell
 
