@@ -39,7 +39,7 @@ Rectangle {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
-        onClicked: root.clicked(mouse.button)
+        onClicked: (mouse) => root.clicked(mouse.button)
     }
 
 }
