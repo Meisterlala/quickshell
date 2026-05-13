@@ -55,7 +55,6 @@ Scope {
                 Workspaces {
                     barWindow: bar
                 }
-
             }
 
             ActiveWindow {
@@ -82,62 +81,25 @@ Scope {
                     barWindow: bar
                 }
 
-                ScriptModule {
+                FritzTraffic {
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
-                    moduleName: "fritz-traffic"
-                    command: "/home/misti/.config/waybar/fritz_traffic.py"
                     interval: 10000
-                    onClickCommand: "qs ipc -c main call bar refreshModule fritz-traffic"
                 }
 
-                ScriptModule {
+                SystemdFailedUnits {
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
-                    moduleName: "nvidia-driver"
-                    command: "/home/misti/.config/waybar/nvidia-driver.py"
-                    interval: 60000
-                }
-
-                ScriptModule {
-                    barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "systemd-failed-units"
-                    command: "/home/misti/.config/waybar/failed-units.sh"
                     interval: 10000
-                    onClickCommand: "/home/misti/.config/waybar/restart-failed.sh"
                 }
 
-                ScriptModule {
+                Updates {
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                     ipc: root.ipc
-                    moduleName: "scrcpy-active"
-                    command: "/home/misti/.config/waybar/scrcpy-active.sh"
-                    interval: 2000
-                    onClickCommand: "/home/misti/.config/waybar/scrcpy-active.sh --kill"
-                }
-
-                ScriptModule {
-                    barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "updates"
-                    command: "/home/misti/.config/waybar/arch_updates.py"
                     interval: 900000
-                    format: "{} {icon}"
-                    formatIcons: ({
-                        "updates": "󱍷",
-                        "normal": "󱍷",
-                        "warning": "󱍷",
-                        "critical": "󱍷",
-                        "updated": "󰒘",
-                        "error": ""
-                    })
-                    onClickCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
                 }
 
                 CodexUsage {
@@ -183,29 +145,15 @@ Scope {
                     interval: 3000
                 }
 
-                ScriptModule {
+                Memory {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "memory"
-                    command: "free | awk '/Mem:/ {printf \"%2d%% \", $3/$2*100}'"
                     interval: 5000
-                    parseJson: false
                 }
 
                 K8sAlerts {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
-                }
-
-                ScriptModule {
-                    barWindow: bar
-                    moduleVisible: root.isSecondary(bar.screen)
-                    ipc: root.ipc
-                    moduleName: "weight"
-                    command: "/home/misti/opencode/weight-unlock/show_weight_waybar.py"
-                    interval: 60000
-                    onClickCommand: "/home/misti/opencode/weight-unlock/show_weight_waybar.py --toggle"
                 }
 
                 ScriptModule {
@@ -247,11 +195,7 @@ Scope {
                 Clock {
                     barWindow: bar
                 }
-
             }
-
         }
-
     }
-
 }
