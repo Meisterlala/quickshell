@@ -64,11 +64,11 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["python3", command]);
+        refreshRunner.exec(["/usr/sbin/python3", command]);
     }
 
     function runUpdate() {
-        actionRunner.exec(["sh", "-lc", updateCommand]);
+        actionRunner.exec(["/usr/sbin/sh", "-lc", updateCommand]);
     }
 
     function applyOutput(output) {

@@ -53,7 +53,7 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["sh", "-lc", queryCommand]);
+        refreshRunner.exec(["/usr/sbin/sh", "-lc", queryCommand]);
     }
 
     function applyOutput(output) {

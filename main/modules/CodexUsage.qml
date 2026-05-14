@@ -59,7 +59,7 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec([command]);
+        refreshRunner.exec(["/usr/sbin/python3", command]);
     }
 
     function applyOutput(output) {

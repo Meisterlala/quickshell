@@ -7,7 +7,7 @@ import subprocess
 import time
 
 
-CODEX_COMMAND = ["codex", "app-server"]
+CODEX_COMMAND = ["/usr/bin/codex", "app-server"]
 CLIENT_INFO = {"name": "quickshell-codex-usage", "version": "1.0"}
 REQUEST_TIMEOUT_SECONDS = 15
 
