@@ -8,6 +8,7 @@ Scope {
     id: root
 
     required property var ipc
+    property bool alternativeMode: false
 
     function isPrimary(screen) {
         return screen && screen.name === "DP-3";
@@ -107,14 +108,12 @@ Scope {
                     moduleVisible: root.isPrimary(bar.screen)
                 }
 
-                ScriptModule {
+                Habits {
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
+                    moduleVisible: root.isPrimary(bar.screen) && !root.alternativeMode
                     ipc: root.ipc
-                    moduleName: "habits"
-                    command: "/home/misti/.local/bin/habits-waybar"
-                    interval: 30000
-                    onClickCommand: "/home/misti/.local/bin/habits-waybar --toggle"
+                    interval: 15000
+                    onAlternativeModeRequested: root.alternativeMode = true
                 }
 
                 Audio {
@@ -194,6 +193,8 @@ Scope {
 
                 Clock {
                     barWindow: bar
+                    alternativeMode: root.alternativeMode
+                    onAlternativeModeToggled: root.alternativeMode = !root.alternativeMode
                 }
             }
         }

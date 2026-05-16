@@ -7,7 +7,9 @@ Item {
     id: root
 
     required property var barWindow
+    property bool alternativeMode: false
     property bool popupOpen: false
+    signal alternativeModeToggled()
 
     implicitWidth: pill.implicitWidth
     implicitHeight: pill.implicitHeight
@@ -27,7 +29,15 @@ Item {
 
         barWindow: root.barWindow
         text: Qt.formatDateTime(clock.date, "hh:mm") + " "
-        onClicked: root.popupOpen = !root.popupOpen
+        moduleClass: root.alternativeMode ? "warning" : ""
+        onClicked: (button) => {
+            if (button === Qt.MiddleButton) {
+                root.alternativeModeToggled();
+                root.popupOpen = false;
+            } else {
+                root.popupOpen = !root.popupOpen;
+            }
+        }
     }
 
     PopupWindow {
