@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,6 +23,7 @@ DEFAULT_API_BASE_URL = "https://habits.meisterlala.dev/api"
 REQUEST_TIMEOUT_SECONDS = 3
 USER_SERVICE_NAME = "habits.service"
 DESKTOP_FILE_PATH = "/usr/share/applications/habits.desktop"
+HABITS_WINDOW_CLASSES = {"habits", "habits-desktop"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -459,7 +461,79 @@ def start_user_service() -> None:
         )
 
 
+def hyprctl_json(args: list[str]) -> object | None:
+    if not shutil.which("hyprctl"):
+        return None
+    try:
+        proc = subprocess.run(
+            ["hyprctl", *args, "-j"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+def current_hypr_workspace() -> str | None:
+    workspace = hyprctl_json(["activeworkspace"])
+    if not isinstance(workspace, dict):
+        return None
+    name = str(workspace.get("name", "")).strip()
+    return name or str(workspace.get("id", "")).strip() or None
+
+
+def find_habits_window() -> str | None:
+    clients = hyprctl_json(["clients"])
+    if not isinstance(clients, list):
+        return None
+    for client in clients:
+        if not isinstance(client, dict):
+            continue
+        window_class = str(client.get("class", "")).lower()
+        if window_class in HABITS_WINDOW_CLASSES:
+            address = str(client.get("address", "")).strip()
+            if address:
+                return address
+    return None
+
+
+def move_habits_to_current_workspace(workspace: str | None) -> None:
+    if not workspace or not shutil.which("hyprctl"):
+        return
+    for _ in range(10):
+        address = find_habits_window()
+        if address:
+            subprocess.run(
+                [
+                    "hyprctl",
+                    "dispatch",
+                    "movetoworkspacesilent",
+                    f"name:{workspace},address:{address}",
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["hyprctl", "dispatch", "focuswindow", f"address:{address}"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        time.sleep(0.1)
+
+
 def launch_desktop_app() -> int:
+    workspace = current_hypr_workspace()
     start_user_service()
     commands = []
     if shutil.which("habits"):
@@ -482,6 +556,7 @@ def launch_desktop_app() -> int:
                 close_fds=True,
                 start_new_session=True,
             )
+            move_habits_to_current_workspace(workspace)
             return 0
         except OSError:
             continue

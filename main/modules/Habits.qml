@@ -46,17 +46,17 @@ ClippingRectangle {
     function refresh() {
         if (!moduleVisible)
             return;
-        refreshRunner.exec(["/usr/sbin/python3", command]);
+        refreshRunner.exec(["/usr/bin/python3", command]);
     }
 
     function runAction(args, actionKey) {
         pendingAction = actionKey;
         actionError = "";
-        actionRunner.exec(["/usr/sbin/python3", command].concat(args));
+        actionRunner.exec(["/usr/bin/python3", command].concat(args));
     }
 
     function toggleApp() {
-        launcher.exec(["/usr/sbin/python3", command, "--toggle-app"]);
+        launcher.exec(["/usr/bin/python3", command, "--toggle-app"]);
     }
 
     function toggleHabit(habit) {

@@ -35,7 +35,7 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["/usr/sbin/python3", command]);
+        refreshRunner.exec(["/usr/bin/python3", command]);
     }
 
     function refreshInteractive() {
@@ -48,7 +48,7 @@ ClippingRectangle {
     }
 
     function runCommand(commandText) {
-        actionRunner.exec(["/usr/sbin/sh", "-lc", commandText]);
+        actionRunner.exec(["/usr/bin/sh", "-lc", commandText]);
     }
 
     function severityColor(severity) {

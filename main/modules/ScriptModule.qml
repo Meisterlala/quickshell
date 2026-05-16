@@ -67,7 +67,7 @@ ModulePill {
         if (commandText.length === 0)
             return ;
 
-        actionRunner.exec(["/usr/sbin/sh", "-lc", commandText]);
+        actionRunner.exec(["/usr/bin/sh", "-lc", commandText]);
     }
 
     function refresh() {
@@ -78,7 +78,7 @@ ModulePill {
             currentText = textOverride;
             return ;
         }
-        refreshRunner.exec(["/usr/sbin/sh", "-lc", command]);
+        refreshRunner.exec(["/usr/bin/sh", "-lc", command]);
     }
 
     function applyOutput(output) {

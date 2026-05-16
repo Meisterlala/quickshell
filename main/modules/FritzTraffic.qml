@@ -64,11 +64,11 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["/usr/sbin/python3", command]);
+        refreshRunner.exec(["/usr/bin/python3", command]);
     }
 
     function openFritzBox() {
-        actionRunner.exec(["/usr/sbin/xdg-open", "http://fritz.box"]);
+        actionRunner.exec(["/usr/bin/xdg-open", "http://fritz.box"]);
     }
 
     function applyOutput(output) {

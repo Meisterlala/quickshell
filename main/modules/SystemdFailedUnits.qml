@@ -27,7 +27,7 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["/usr/sbin/sh", "-lc", queryCommand]);
+        refreshRunner.exec(["/usr/bin/sh", "-lc", queryCommand]);
     }
 
     function runRestart() {

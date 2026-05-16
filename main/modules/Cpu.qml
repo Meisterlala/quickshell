@@ -169,8 +169,8 @@ ClippingRectangle {
         if (!moduleVisible)
             return;
 
-        refreshRunner.exec(["/usr/sbin/sh", "-lc", statCommand]);
-        loadRunner.exec(["/usr/sbin/sh", "-lc", loadCommand]);
+        refreshRunner.exec(["/usr/bin/sh", "-lc", statCommand]);
+        loadRunner.exec(["/usr/bin/sh", "-lc", loadCommand]);
     }
 
     implicitWidth: compactContent.implicitWidth + 20
