@@ -30,7 +30,7 @@ QtObject {
         ["class", "jellyfin-desktop", ""],
         ["class", "mpv", ""],
         ["class", "steam_app_686060", ""],
-        ["class", "org.mozilla.Thunderbird", ""],
+        ["class", "org.mozilla.Thunderbird", ""],
         ["class", "xdg-desktop-portal-gtk", ""],
         ["class", "localsend", ""],
         ["class", "org.kde.keepsecret", ""],
