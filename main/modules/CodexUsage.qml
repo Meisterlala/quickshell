@@ -134,6 +134,7 @@ ClippingRectangle {
             id: usageLabel
 
             anchors.verticalCenter: parent.verticalCenter
+            visible: Boolean(root.primary.available)
             color: theme.text
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
