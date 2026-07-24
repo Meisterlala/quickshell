@@ -17,12 +17,14 @@ ClippingRectangle {
     readonly property int cornerRadius: 8
     property var primary: ({
         "label": "5h",
+        "available": false,
         "usedPercent": 0,
         "resetIn": "",
         "resetAt": ""
     })
     property var secondary: ({
         "label": "7d",
+        "available": false,
         "usedPercent": 0,
         "resetIn": "",
         "resetAt": ""
@@ -52,6 +54,9 @@ ClippingRectangle {
     }
 
     function resetText(windowData) {
+        if (!windowData.available)
+            return "not reported by Codex";
+
         return `resets in ${windowData.resetIn || "?"} at ${windowData.resetAt || "?"}`;
     }
 
@@ -263,8 +268,9 @@ ClippingRectangle {
         UsageBar {
             width: parent.width
             label: String(detailRoot.usage.label || "")
-            percent: detailRoot.percent
-            accent: detailRoot.accent
+                    percent: detailRoot.percent
+                    available: Boolean(detailRoot.usage.available)
+                    accent: detailRoot.accent
             fillColor: detailRoot.fillColor
         }
 
@@ -282,6 +288,7 @@ ClippingRectangle {
 
         required property string label
         required property real percent
+        required property bool available
         required property string accent
         required property string fillColor
         property int barHeight: 22
@@ -302,7 +309,7 @@ ClippingRectangle {
                 anchors.left: parent.left
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                width: Math.max(3, parent.width * rowRoot.percent / 100)
+                width: rowRoot.available ? Math.max(3, parent.width * rowRoot.percent / 100) : 0
                 radius: 0
                 color: rowRoot.fillColor
             }
@@ -329,7 +336,7 @@ ClippingRectangle {
                 font.family: theme.fontFamily
                 font.pixelSize: rowRoot.fontPixelSize
                 horizontalAlignment: Text.AlignRight
-                text: `${Math.round(rowRoot.percent)}%`
+                text: rowRoot.available ? `${Math.round(rowRoot.percent)}%` : "--"
             }
 
         }

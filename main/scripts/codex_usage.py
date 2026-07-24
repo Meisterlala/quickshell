@@ -107,12 +107,13 @@ def call_rate_limits():
 
 
 def usage_window(label, window, now):
+    window = window or {}
     try:
-        used = int(round(float((window or {}).get("usedPercent", 0))))
+        used = int(round(float(window.get("usedPercent", 0))))
     except (TypeError, ValueError):
         used = 0
 
-    resets_at = (window or {}).get("resetsAt")
+    resets_at = window.get("resetsAt")
     try:
         reset_dt = (
             datetime.datetime.fromtimestamp(int(resets_at), datetime.timezone.utc)
@@ -124,12 +125,33 @@ def usage_window(label, window, now):
 
     return {
         "label": label,
+        "available": bool(window),
         "usedPercent": max(0, min(100, used)),
         "resetIn": human_delta(reset_dt, now) if reset_dt else "",
         "resetAt": reset_dt.astimezone().strftime("%H:%M" if label == "5h" else "%d.%m")
         if reset_dt
         else "",
     }
+
+
+def rate_limit_windows(limits, now):
+    windows = {"5h": usage_window("5h", {}, now), "7d": usage_window("7d", {}, now)}
+    for window in (limits.get("primary"), limits.get("secondary")):
+        if not window:
+            continue
+
+        try:
+            duration = int(window.get("windowDurationMins"))
+        except (TypeError, ValueError):
+            continue
+
+        # Codex names these primary/secondary, but their positions are not stable.
+        if duration == 300:
+            windows["5h"] = usage_window("5h", window, now)
+        elif duration == 10080:
+            windows["7d"] = usage_window("7d", window, now)
+
+    return windows
 
 
 def main():
@@ -147,8 +169,9 @@ def main():
         return
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    primary = usage_window("5h", limits.get("primary") or {}, now)
-    secondary = usage_window("7d", limits.get("secondary") or {}, now)
+    windows = rate_limit_windows(limits, now)
+    primary = windows["5h"]
+    secondary = windows["7d"]
     max_pct = max(primary["usedPercent"], secondary["usedPercent"])
 
     state = "critical" if max_pct >= 90 else "warning" if max_pct >= 66 else "normal"
