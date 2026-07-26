@@ -248,17 +248,13 @@ def nonzero_events(day_view: dict) -> list[dict]:
     ]
 
 
-def relevant_policies(policies: list) -> list[dict]:
+def policy_views(policies: list) -> list[dict]:
     result = []
     for policy in policies:
         if not isinstance(policy, dict):
             continue
         status = str(policy.get("status", ""))
         points_delta = policy.get("points_delta", 0)
-        if status in {"", "ok", "inactive"} and not (
-            isinstance(points_delta, (int, float)) and points_delta < 0
-        ):
-            continue
         display = as_dict(policy.get("display"))
         target = display.get("min", display.get("min_occurrences", policy.get("target_value", 0)))
         result.append(
@@ -373,7 +369,7 @@ def build_payload(
     habits = visible_habits(day_view)
     events_active = active_events(day_view)
     events_nonzero = nonzero_events(day_view)
-    policies = relevant_policies(policies_response)
+    policies = policy_views(policies_response)
     notifications = persistent_notifications(notifications_response)
     deadlines = active_deadlines(deadlines_response, today)
     contracts = active_contracts(contracts_response)
@@ -600,7 +596,7 @@ def render_status(api_base_url: str, api_key: str) -> dict:
     weight_summary = as_dict(request_json(api_base_url, api_key, "/summary/weight"))
     punishment_status = as_dict(request_json(api_base_url, api_key, "/punishments/status"))
     day_view = as_dict(request_json(api_base_url, api_key, "/days/today"))
-    policies = as_list(request_json(api_base_url, api_key, "/policies/status"))
+    policies = as_list(request_json(api_base_url, api_key, "/policies/to-do"))
     contracts = as_dict(request_json(api_base_url, api_key, "/contracts/status"))
     notifications = as_dict(request_json(api_base_url, api_key, "/notifications/persistent"))
     deadlines = as_dict(request_json(api_base_url, api_key, "/deadlines"))
