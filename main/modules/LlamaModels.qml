@@ -67,7 +67,7 @@ ClippingRectangle {
 
         let state = generationSamples[model.id];
         if (!state || state.generationId !== model.generationId)
-            state = { generationId: model.generationId, samples: [] };
+            state = { generationId: model.generationId, samples: [], phase: "" };
 
         const sample = {
             timestamp: now,
@@ -85,10 +85,16 @@ ClippingRectangle {
 
         const first = state.samples[0];
         const elapsed = sample.timestamp - first.timestamp;
-        const promptActive = previous ? sample.prompt > previous.prompt : sample.prompt > 0;
-        const tokens = promptActive ? sample.prompt - first.prompt : sample.generated - first.generated;
+        const promptTokens = Math.max(0, sample.prompt - first.prompt);
+        const generatedTokens = Math.max(0, sample.generated - first.generated);
+        if (generatedTokens > 0)
+            state.phase = "generation";
+        else if (promptTokens > 0 || (state.phase.length === 0 && sample.prompt > 0))
+            state.phase = "prompt";
+
+        const tokens = state.phase === "prompt" ? promptTokens : generatedTokens;
         model.tokensPerSecond = elapsed > 0 ? Math.max(0, tokens) * 1000 / elapsed : 0;
-        model.ratePhase = promptActive ? "prompt" : "generation";
+        model.ratePhase = state.phase || "generation";
     }
 
     function rateText(value) {
