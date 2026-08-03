@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "PromptLabels.js" as PromptLabels
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -16,10 +17,15 @@ ClippingRectangle {
     property string command: "/home/misti/.config/quickshell/main/scripts/llama_models.py"
     property var models: []
     property var generationSamples: ({})
+    property int promptLabelIndex: 0
+    property string activePromptLabel: ""
+    property bool advancePromptLabel: false
+    property bool generatingLastSample: false
     readonly property int activeCount: models.filter(model => model.active).length
     readonly property real tokensPerSecond: models.reduce((total, model) => total + (model.active && model.ratePhase === "generation" ? Number(model.tokensPerSecond || 0) : 0), 0)
     readonly property bool generating: models.some(model => model.active && model.ratePhase === "generation")
-    readonly property bool prompting: models.some(model => model.active && model.ratePhase === "prompt")
+    readonly property bool prompting: models.some(model => model.active && model.ratePhase !== "generation")
+    readonly property bool loading: models.some(model => model.status === "loading")
 
     function refresh() {
         if (!moduleVisible || refreshRunner.running)
@@ -46,6 +52,21 @@ ClippingRectangle {
             const nextModels = Array.isArray(parsed.models) ? parsed.models : [];
             for (const model of nextModels)
                 updateRate(model, now);
+
+            const nextGenerating = nextModels.some(model => model.active && model.ratePhase === "generation");
+            const nextPrompting = nextModels.some(model => model.active && model.ratePhase !== "generation");
+            if (nextGenerating && !generatingLastSample)
+                advancePromptLabel = true;
+            if (nextPrompting && (activePromptLabel.length === 0 || advancePromptLabel)) {
+                activePromptLabel = nextPromptLabel();
+                advancePromptLabel = false;
+            }
+            for (const model of nextModels) {
+                if (model.active && model.ratePhase !== "generation")
+                    model.promptLabel = activePromptLabel;
+            }
+            generatingLastSample = nextGenerating;
+
             for (const id of Object.keys(generationSamples)) {
                 if (!nextModels.some(model => model.id === id))
                     delete generationSamples[id];
@@ -60,14 +81,21 @@ ClippingRectangle {
     function updateRate(model, now) {
         model.tokensPerSecond = 0;
         model.ratePhase = "";
-        if (!model.active || model.generationId.length === 0) {
+        if (!model.active) {
             delete generationSamples[model.id];
             return;
         }
 
+        const generationId = model.generationId.length > 0 ? model.generationId : "pending";
         let state = generationSamples[model.id];
-        if (!state || state.generationId !== model.generationId)
-            state = { generationId: model.generationId, samples: [], phase: "prompt" };
+        if (!state) {
+            state = { generationId: generationId, samples: [], phase: "prompt" };
+        } else if (state.generationId === "pending" && generationId !== "pending") {
+            state.generationId = generationId;
+            state.samples = [];
+        } else if (state.generationId !== generationId) {
+            state = { generationId: generationId, samples: [], phase: "prompt" };
+        }
 
         const sample = {
             timestamp: now,
@@ -77,6 +105,7 @@ ClippingRectangle {
         let previous = state.samples[state.samples.length - 1];
         if (previous && (sample.generated < previous.generated || sample.prompt < previous.prompt)) {
             state.samples = [];
+            state.phase = "prompt";
             previous = null;
         }
         state.samples.push(sample);
@@ -95,6 +124,16 @@ ClippingRectangle {
         model.ratePhase = state.phase;
     }
 
+    function nextPromptLabel() {
+        const label = PromptLabels.values[promptLabelIndex];
+        promptLabelIndex = (promptLabelIndex + 1) % PromptLabels.values.length;
+        return label;
+    }
+
+    function currentPromptLabel() {
+        return activePromptLabel || "Processing";
+    }
+
     function rateText(value) {
         return Number(value || 0).toFixed(0);
     }
@@ -104,7 +143,7 @@ ClippingRectangle {
             return String(models.length);
         if (generating)
             return `${rateText(tokensPerSecond)} t/s`;
-        return prompting ? "Prompt" : "0 t/s";
+        return prompting ? currentPromptLabel() : "0 t/s";
     }
 
     function summaryStatusText() {
@@ -112,7 +151,7 @@ ClippingRectangle {
             return "All models idle";
         if (generating)
             return `${activeCount} active · ${rateText(tokensPerSecond)} generated tokens/s`;
-        return prompting ? `${activeCount} active · Processing prompt` : `${activeCount} active · 0 generated tokens/s`;
+        return prompting ? `${activeCount} active · ${currentPromptLabel()}` : `${activeCount} active · 0 generated tokens/s`;
     }
 
     function modelStatusText(model) {
@@ -120,7 +159,7 @@ ClippingRectangle {
             return "Loading";
         if (!model.active)
             return "Idle";
-        return model.ratePhase === "prompt" ? "Prompt" : `${rateText(model.tokensPerSecond)} t/s`;
+        return model.ratePhase === "prompt" ? (model.promptLabel || "Processing") : `${rateText(model.tokensPerSecond)} t/s`;
     }
 
     function compactName(value) {
@@ -172,7 +211,7 @@ ClippingRectangle {
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            color: theme.sky
+            color: root.loading ? theme.yellow : theme.sky
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
             text: "󰧑"
@@ -237,7 +276,7 @@ ClippingRectangle {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        color: theme.sky
+                        color: root.loading ? theme.yellow : theme.sky
                         font.family: theme.fontFamily
                         font.pixelSize: theme.barFontPixelSize + 4
                         text: "󰧑"
@@ -367,6 +406,9 @@ ClippingRectangle {
             refreshRunner.running = false;
             models = [];
             generationSamples = ({});
+            activePromptLabel = "";
+            advancePromptLabel = false;
+            generatingLastSample = false;
         }
     }
 }
