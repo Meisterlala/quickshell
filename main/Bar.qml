@@ -131,6 +131,11 @@ Scope {
                     format: "{} 󰒲"
                 }
 
+                LlamaModels {
+                    barWindow: bar
+                    moduleVisible: root.isSecondary(bar.screen)
+                }
+
                 Gpu {
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
