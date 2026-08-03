@@ -67,7 +67,7 @@ ClippingRectangle {
 
         let state = generationSamples[model.id];
         if (!state || state.generationId !== model.generationId)
-            state = { generationId: model.generationId, samples: [], phase: "" };
+            state = { generationId: model.generationId, samples: [], phase: "prompt" };
 
         const sample = {
             timestamp: now,
@@ -89,12 +89,10 @@ ClippingRectangle {
         const generatedTokens = Math.max(0, sample.generated - first.generated);
         if (generatedTokens > 0)
             state.phase = "generation";
-        else if (promptTokens > 0 || (state.phase.length === 0 && sample.prompt > 0))
-            state.phase = "prompt";
 
         const tokens = state.phase === "prompt" ? promptTokens : generatedTokens;
         model.tokensPerSecond = elapsed > 0 ? Math.max(0, tokens) * 1000 / elapsed : 0;
-        model.ratePhase = state.phase || "generation";
+        model.ratePhase = state.phase;
     }
 
     function rateText(value) {
@@ -131,26 +129,25 @@ ClippingRectangle {
 
     function paramsText(value) {
         const params = Number(value || 0);
-        return params > 0 ? `${(params / 1000000000).toFixed(1)}B params` : "";
+        return params > 0 ? `${(params / 1000000000).toFixed(1)}B param` : "";
     }
 
-    function sizeText(value) {
-        const size = Number(value || 0);
-        return size > 0 ? `${(size / 1073741824).toFixed(1)} GiB` : "";
+    function contextText(value) {
+        const context = Number(value || 0);
+        return context > 0 ? `${Math.round(context / 1024)}k ctx` : "";
     }
 
-    function modelDetails(model) {
+    function modelSpec(model) {
         const details = [];
+        const vram = Number(model.vramBytes || 0);
         const params = paramsText(model.params);
-        const size = sizeText(model.size);
+        const context = contextText(model.contextSize);
+        if (vram > 0)
+            details.push(`${(vram / 1073741824).toFixed(1)} GiB VRAM`);
         if (params.length > 0)
             details.push(params);
-        if (size.length > 0)
-            details.push(size);
-        if (Number(model.contextSize || 0) > 0)
-            details.push(`${Number(model.contextSize).toLocaleString()} ctx`);
-        if (Array.isArray(model.modalities) && model.modalities.length > 0)
-            details.push(model.modalities.join(" + "));
+        if (context.length > 0)
+            details.push(context);
         return details.join(" · ");
     }
 
@@ -304,9 +301,10 @@ ClippingRectangle {
 
                                 Row {
                                     width: parent.width
+                                    spacing: 8
 
                                     Text {
-                                        width: parent.width - stateLabel.width
+                                        width: parent.width - stateLabel.width - parent.spacing
                                         color: theme.text
                                         elide: Text.ElideMiddle
                                         font.family: theme.fontFamily
@@ -329,11 +327,11 @@ ClippingRectangle {
                                     width: parent.width
                                     visible: text.length > 0
                                     color: theme.subtext0
-                                    elide: Text.ElideRight
                                     font.family: theme.fontFamily
                                     font.pixelSize: theme.tooltipFontPixelSize - 1
-                                    text: root.modelDetails(modelRow.modelData)
+                                    text: root.modelSpec(modelRow.modelData)
                                 }
+
                             }
                         }
                     }
