@@ -7,6 +7,7 @@ QtObject {
         ["title", ".*youtube.*", ""],
         ["title", "OpenCode", ""],
         ["title", "OC \\|.*", ""],
+        ["title", "π", "󰏿"],
         ["title", "nvim .*", ""],
         ["class", "zen", ""],
         ["class", "Alacritty", ""],

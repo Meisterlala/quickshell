@@ -2,20 +2,24 @@
 
 import json
 import os
+import shlex
 import subprocess
 import urllib.error
-import urllib.parse
 import urllib.request
 
 
 BASE_URL = "http://127.0.0.1:11435"
+# Never send local llama.cpp child requests through an environment HTTP proxy.
+OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def fetch(path, model=None):
-    if model:
-        path = f"{path}?{urllib.parse.urlencode({'model': model})}"
-    with urllib.request.urlopen(f"{BASE_URL}{path}", timeout=1.5) as response:
+def fetch_url(url, timeout=1.5):
+    with OPENER.open(url, timeout=timeout) as response:
         return response.read().decode("utf-8")
+
+
+def fetch(path):
+    return fetch_url(f"{BASE_URL}{path}")
 
 
 def model_port(args):
@@ -33,33 +37,41 @@ def model_port(args):
     return 0
 
 
-def connected_ports():
-    # A child connection proves a real request is already in flight, so querying
-    # /slots cannot be what prevents an otherwise-idle model from sleeping.
-    ports = set()
-    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
-        try:
-            with open(path, encoding="ascii") as connections:
-                next(connections, None)
-                for line in connections:
-                    fields = line.split()
-                    if len(fields) < 4 or fields[3] != "01":
-                        continue
-                    try:
-                        ports.add(int(fields[1].rsplit(":", 1)[1], 16))
-                        ports.add(int(fields[2].rsplit(":", 1)[1], 16))
-                    except (IndexError, ValueError):
-                        continue
-        except OSError:
-            continue
-    return ports
+def model_host(args):
+    host = "127.0.0.1"
+    for index, arg in enumerate(args):
+        if arg == "--host" and index + 1 < len(args):
+            host = str(args[index + 1])
+            break
+        if isinstance(arg, str) and arg.startswith("--host="):
+            host = arg.removeprefix("--host=")
+            break
+
+    # Connect through loopback even if a server was deliberately bound wider.
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
+    elif host == "::":
+        host = "::1"
+    return f"[{host}]" if ":" in host and not host.startswith("[") else host
+
+
+def child_url(args, port):
+    return f"http://{model_host(args)}:{port}" if port > 0 else ""
+
+
+def command_args(command):
+    try:
+        return shlex.split(command)
+    except (TypeError, ValueError):
+        return []
 
 
 def decoded_tokens(slot):
     next_token = slot.get("next_token", [])
-    if not isinstance(next_token, list) or not next_token:
-        return 0
-    return int(next_token[0].get("n_decoded", 0))
+    if isinstance(next_token, list) and next_token:
+        return int(next_token[0].get("n_decoded", 0))
+    # Compatibility with alternate llama.cpp slot schemas.
+    return int(slot.get("n_decoded", slot.get("n_tokens", 0)))
 
 
 def model_pids(ports):
@@ -112,66 +124,135 @@ def gpu_memory_by_pid(pids):
     return memory
 
 
-def main():
+def swap_items():
+    """Return normalized llama-swap /running entries, or None if not swap."""
     try:
-        catalog = json.loads(fetch("/v1/models")).get("data", [])
-    except (OSError, ValueError, urllib.error.URLError) as error:
-        print(json.dumps({"models": [], "error": str(error)}))
-        return
+        payload = json.loads(fetch("/running"))
+    except (OSError, ValueError, urllib.error.URLError):
+        return None
+    running = payload.get("running")
+    if not isinstance(running, list):
+        return None
 
-    running_items = []
+    items = []
+    for item in running:
+        args = command_args(item.get("cmd", ""))
+        port = model_port(args)
+        state = str(item.get("state", "starting"))
+        items.append(
+            {
+                "id": str(item.get("model", "Unknown model")),
+                "status": "loaded" if state == "ready" else "loading",
+                "args": args,
+                "port": port,
+                "proxy": str(item.get("proxy", "")).rstrip("/")
+                or child_url(args, port),
+                "contextSize": 0,
+                "params": 0,
+            }
+        )
+    return items
+
+
+def llama_router_items():
+    """Return normalized native llama.cpp multi-model router entries."""
+    payload = json.loads(fetch("/v1/models"))
+    catalog = payload.get("data", [])
+    if not isinstance(catalog, list):
+        return []
+
+    items = []
     for item in catalog:
         status_info = item.get("status", {})
         status = str(status_info.get("value", "unloaded"))
         if status not in ("loaded", "loading"):
             continue
-        running_items.append(
-            (item, status_info, status, model_port(status_info.get("args", [])))
-        )
-
-    pids = model_pids({port for _, _, _, port in running_items if port > 0})
-    gpu_memory = gpu_memory_by_pid(set(pids.values()))
-    active_ports = connected_ports()
-    models = []
-    for item, status_info, status, port in running_items:
+        raw_args = status_info.get("args", [])
+        args = [str(arg) for arg in raw_args] if isinstance(raw_args, list) else []
+        port = model_port(args)
         meta = item.get("meta", {})
-        has_active_request = status == "loaded" and port in active_ports
+        items.append(
+            {
+                "id": str(item.get("id", "Unknown model")),
+                "status": status,
+                "args": args,
+                "port": port,
+                "proxy": child_url(args, port),
+                "contextSize": int(meta.get("n_ctx", 0)),
+                "params": float(meta.get("n_params", 0)),
+            }
+        )
+    return items
+
+
+def main():
+    backend = "llama-swap"
+    items = swap_items()
+    if items is None:
+        backend = "llama.cpp"
+        try:
+            items = llama_router_items()
+        except (OSError, ValueError, TypeError, urllib.error.URLError) as error:
+            print(json.dumps({"models": [], "backend": "", "error": str(error)}))
+            return
+
+    pids = model_pids({item["port"] for item in items if item["port"] > 0})
+    gpu_memory = gpu_memory_by_pid(set(pids.values()))
+    models = []
+
+    for item in items:
+        port = item["port"]
         model = {
-            "id": str(item.get("id", "Unknown model")),
-            "status": status,
-            "active": has_active_request,
+            "id": item["id"],
+            "status": item["status"],
+            "active": False,
             "generationId": "",
             "generationTokens": 0,
             "promptTokens": 0,
-            "contextSize": int(meta.get("n_ctx", 0)),
-            "params": float(meta.get("n_params", 0)),
+            "contextSize": item["contextSize"],
+            "params": item["params"],
             "vramBytes": int(gpu_memory.get(pids.get(port), 0)),
         }
 
-        if has_active_request:
+        # Query only an already-running child. Polling the bar must never route
+        # through a model endpoint that could load or evict a model.
+        proxy = item["proxy"]
+        if model["status"] == "loaded" and proxy:
             try:
-                slots = json.loads(fetch("/slots", model["id"]))
-                processing = [slot for slot in slots if slot.get("is_processing")]
-                model["active"] = bool(processing)
-                model["promptTokens"] = sum(
-                    int(slot.get("n_prompt_tokens_processed", 0)) for slot in processing
-                )
-                model["generationTokens"] = sum(
-                    decoded_tokens(slot) for slot in processing
-                )
-                model["generationId"] = ",".join(
-                    sorted(
-                        str(slot.get("id_task"))
-                        for slot in processing
-                        if slot.get("id_task") is not None
+                slots = json.loads(fetch_url(f"{proxy}/slots"))
+                if isinstance(slots, list):
+                    slot_context = max(
+                        (int(slot.get("n_ctx", 0)) for slot in slots), default=0
                     )
-                )
+                    if slot_context > 0:
+                        model["contextSize"] = slot_context
+                    processing = [slot for slot in slots if slot.get("is_processing")]
+                    model["active"] = bool(processing)
+                    model["promptTokens"] = sum(
+                        int(slot.get("n_prompt_tokens_processed", 0))
+                        for slot in processing
+                    )
+                    model["generationTokens"] = sum(
+                        decoded_tokens(slot) for slot in processing
+                    )
+                    model["generationId"] = ",".join(
+                        sorted(
+                            str(slot.get("id_task"))
+                            for slot in processing
+                            if slot.get("id_task") is not None
+                        )
+                    )
             except (OSError, ValueError, TypeError, urllib.error.URLError):
                 pass
 
         models.append(model)
 
-    print(json.dumps({"models": models, "error": ""}, separators=(",", ":")))
+    print(
+        json.dumps(
+            {"models": models, "backend": backend, "error": ""},
+            separators=(",", ":"),
+        )
+    )
 
 
 if __name__ == "__main__":
