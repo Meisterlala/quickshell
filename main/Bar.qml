@@ -196,6 +196,15 @@ Scope {
                     interval: 10000
                 }
 
+                ScriptModule {
+                    barWindow: bar
+                    moduleVisible: root.isSecondary(bar.screen)
+                    ipc: root.ipc
+                    moduleName: "garage-k8up"
+                    command: "/home/misti/.config/waybar/garage-status.sh k8up-backup K8"
+                    interval: 10000
+                }
+
                 Clock {
                     barWindow: bar
                     alternativeMode: root.alternativeMode
