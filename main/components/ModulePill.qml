@@ -40,6 +40,27 @@ Rectangle {
         font.pixelSize: root.fontPixelSize
         textFormat: Text.PlainText
         verticalAlignment: Text.AlignVCenter
+
+        SequentialAnimation on opacity {
+            running: root.visible && Qt.colorEqual(label.color, theme.red)
+            loops: Animation.Infinite
+            onRunningChanged: {
+                if (!running)
+                    label.opacity = 1;
+            }
+
+            NumberAnimation {
+                to: 0.4
+                duration: 1600
+                easing.type: Easing.InOutSine
+            }
+
+            NumberAnimation {
+                to: 1
+                duration: 1600
+                easing.type: Easing.InOutSine
+            }
+        }
     }
 
     MouseArea {
