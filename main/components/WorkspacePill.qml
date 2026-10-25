@@ -1,6 +1,7 @@
 import ".."
 import "../services"
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 
@@ -70,7 +71,10 @@ Rectangle {
             model: root.windows
 
             Item {
+                id: windowIcon
+
                 required property var modelData
+                readonly property bool urgent: modelData ? modelData.urgent : false
                 readonly property string glyph: iconMap.iconFor(modelData)
                 readonly property string iconSource: root.desktopIcon(modelData)
 
@@ -84,12 +88,17 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                     mipmap: true
                     visible: parent.glyph.length === 0 && parent.iconSource.length > 0
+                    layer.enabled: windowIcon.urgent
+                    layer.effect: MultiEffect {
+                        colorization: 1
+                        colorizationColor: theme.red
+                    }
                 }
 
                 Text {
                     anchors.centerIn: parent
                     text: parent.glyph
-                    color: root.workspace && root.workspace.urgent ? theme.red : theme.text
+                    color: windowIcon.urgent ? theme.red : theme.text
                     font.family: theme.fontFamily
                     font.pixelSize: theme.barFontPixelSize
                     textFormat: Text.PlainText
@@ -99,7 +108,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     text: "?"
-                    color: root.workspace && root.workspace.urgent ? theme.red : theme.text
+                    color: windowIcon.urgent ? theme.red : theme.text
                     font.family: theme.fontFamily
                     font.pixelSize: theme.barFontPixelSize
                     textFormat: Text.PlainText
