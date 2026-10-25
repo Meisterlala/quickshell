@@ -1,4 +1,5 @@
 import "../components"
+import "../popups"
 import ".."
 import QtQuick
 import Quickshell
@@ -9,7 +10,17 @@ Item {
     required property var barWindow
     property bool alternativeMode: false
     property bool popupOpen: false
+    property bool popupPinned: false
     signal alternativeModeToggled()
+
+    function updateHover() {
+        if (pill.hovered || popupHover.hovered || popupPinned) {
+            hideDelay.stop();
+            popupOpen = true;
+        } else {
+            hideDelay.restart();
+        }
+    }
 
     implicitWidth: pill.implicitWidth
     implicitHeight: pill.implicitHeight
@@ -20,8 +31,13 @@ Item {
         precision: SystemClock.Minutes
     }
 
-    Theme {
-        id: theme
+    Timer {
+        id: hideDelay
+        interval: 300 // Allow the pointer to cross the gap below the bar.
+        onTriggered: {
+            if (!pill.hovered && !popupHover.hovered && !root.popupPinned)
+                root.popupOpen = false;
+        }
     }
 
     ModulePill {
@@ -30,12 +46,15 @@ Item {
         barWindow: root.barWindow
         text: Qt.formatDateTime(clock.date, "hh:mm") + " "
         moduleClass: root.alternativeMode ? "warning" : ""
+        onHoveredChanged: root.updateHover()
         onClicked: (button) => {
             if (button === Qt.MiddleButton) {
                 root.alternativeModeToggled();
+                root.popupPinned = false;
                 root.popupOpen = false;
             } else {
-                root.popupOpen = !root.popupOpen;
+                root.popupPinned = !root.popupPinned;
+                root.updateHover();
             }
         }
     }
@@ -44,47 +63,29 @@ Item {
         anchor.window: root.barWindow
         anchor.rect.x: root.barWindow.width - width - 8
         anchor.rect.y: root.barWindow.height + 8
-        implicitWidth: 320
-        implicitHeight: 250
+        implicitWidth: 380
+        implicitHeight: calendarLoader.item ? calendarLoader.item.implicitHeight : 500
+        color: "transparent"
         visible: root.popupOpen
-        grabFocus: true
+        grabFocus: false
         onVisibleChanged: {
-            if (!visible)
+            if (!visible) {
                 root.popupOpen = false;
-
+                root.popupPinned = false;
+            }
         }
 
-        PopupSurface {
+        Loader {
+            id: calendarLoader
             anchors.fill: parent
-
-            Column {
-                anchors.fill: parent
-                anchors.margins: 18
-                spacing: 12
-
-                Text {
-                    text: Qt.formatDateTime(clock.date, "dddd, dd.MM.yyyy")
-                    color: theme.text
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.popupTitleFontPixelSize
-                }
-
-                Text {
-                    text: Qt.formatDateTime(clock.date, "hh:mm")
-                    color: theme.rosewater
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.popupLargeFontPixelSize
-                    font.bold: true
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: "#3345475a"
-                }
-
+            active: root.popupOpen
+            HoverHandler {
+                id: popupHover
+                onHoveredChanged: root.updateHover()
             }
-
+            sourceComponent: CalendarPopup {
+                today: clock.date
+            }
         }
 
     }

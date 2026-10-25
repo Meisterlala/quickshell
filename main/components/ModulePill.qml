@@ -14,6 +14,7 @@ Rectangle {
     property int fontPixelSize: theme.barFontPixelSize
     property int horizontalPadding: 20
     property int minimumWidth: 30
+    readonly property bool hovered: mouse.containsMouse
     readonly property bool tooltipVisible: root.tooltipText.length > 0 && mouse.containsMouse
 
     signal clicked(int button)
