@@ -81,6 +81,29 @@ Rectangle {
                 width: root.iconSize
                 height: root.iconSize
 
+                SequentialAnimation on opacity {
+                    running: windowIcon.visible && windowIcon.urgent
+                    loops: Animation.Infinite
+                    onRunningChanged: {
+                        if (!running)
+                            windowIcon.opacity = 1;
+                    }
+
+                    NumberAnimation {
+                        from: 1
+                        to: 0.2
+                        duration: 1000
+                        easing.type: Easing.InOutSine
+                    }
+
+                    NumberAnimation {
+                        from: 0.2
+                        to: 1
+                        duration: 1000
+                        easing.type: Easing.InOutSine
+                    }
+                }
+
                 Image {
                     anchors.fill: parent
                     source: parent.iconSource

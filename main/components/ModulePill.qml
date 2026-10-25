@@ -51,13 +51,13 @@ Rectangle {
 
             NumberAnimation {
                 to: 0.4
-                duration: 1600
+                duration: 500
                 easing.type: Easing.InOutSine
             }
 
             NumberAnimation {
                 to: 1
-                duration: 1600
+                duration: 500
                 easing.type: Easing.InOutSine
             }
         }
