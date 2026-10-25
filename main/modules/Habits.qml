@@ -37,6 +37,8 @@ ClippingRectangle {
     property bool previousAllHabitsDone: false
     property string actionError: ""
     property string pendingAction: ""
+    property var actionQueue: []
+    property bool refreshPending: false
     signal alternativeModeRequested()
     readonly property bool popupVisible: visible && (mouse.containsMouse || popupPinned)
     readonly property bool hasError: state === "error" || errorText.length > 0
@@ -46,13 +48,44 @@ ClippingRectangle {
     function refresh() {
         if (!moduleVisible)
             return;
+        if (refreshRunner.running) {
+            refreshPending = true;
+            return;
+        }
+        refreshPending = false;
         refreshRunner.exec(["/usr/bin/python3", command]);
     }
 
+    function isActionPending(actionKey) {
+        return pendingAction === actionKey || actionQueue.some(action => action.key === actionKey);
+    }
+
     function runAction(args, actionKey) {
-        pendingAction = actionKey;
-        actionError = "";
-        actionRunner.exec(["/usr/bin/python3", command].concat(args));
+        if (isActionPending(actionKey))
+            return;
+        if (!pendingAction && actionQueue.length === 0)
+            actionError = "";
+        actionQueue = actionQueue.concat([{args: args, key: actionKey}]);
+        startNextAction();
+    }
+
+    function startNextAction() {
+        if (actionRunner.running || pendingAction || actionQueue.length === 0)
+            return;
+        const action = actionQueue[0];
+        actionQueue = actionQueue.slice(1);
+        pendingAction = action.key;
+        actionRunner.exec(["/usr/bin/python3", command].concat(action.args));
+    }
+
+    function finishAction(exitCode) {
+        if (!pendingAction)
+            return;
+        if (exitCode !== 0)
+            actionError = actionErrors.text.trim() || actionOutput.text.trim() || "Habits action failed";
+        pendingAction = "";
+        refresh();
+        Qt.callLater(startNextAction);
     }
 
     function toggleApp() {
@@ -351,7 +384,7 @@ ClippingRectangle {
                                 required property var modelData
                                 width: bodyColumn.width
                                 eventItem: modelData
-                                busy: root.pendingAction === `event:${String(modelData.id || "")}`
+                                busy: root.isActionPending(`event:${String(modelData.id || "")}`)
                                 onStopRequested: root.stopEvent(modelData)
                             }
                         }
@@ -388,7 +421,7 @@ ClippingRectangle {
                                 required property var modelData
                                 width: bodyColumn.width
                                 habit: modelData
-                                busy: root.pendingAction === `habit:${String(modelData.id || "")}`
+                                busy: root.isActionPending(`habit:${String(modelData.id || "")}`)
                                 onToggleRequested: root.toggleHabit(modelData)
                             }
                         }
@@ -938,25 +971,21 @@ ClippingRectangle {
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
         }
+        onExited: {
+            if (root.refreshPending)
+                Qt.callLater(root.refresh);
+        }
     }
 
     Process {
         id: actionRunner
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.pendingAction = "";
-                const trimmed = this.text.trim();
-                if (trimmed.length > 0)
-                    root.actionError = trimmed;
-                root.refresh();
-            }
-        }
-        stderr: StdioCollector {
-            onStreamFinished: {
-                const trimmed = this.text.trim();
-                if (trimmed.length > 0)
-                    root.actionError = trimmed;
-            }
+        stdout: StdioCollector { id: actionOutput }
+        stderr: StdioCollector { id: actionErrors }
+        onExited: (exitCode, exitStatus) => root.finishAction(exitCode)
+        onRunningChanged: {
+            // Failed-to-start does not emit exited.
+            if (!running && root.pendingAction)
+                root.finishAction(-1);
         }
     }
 
@@ -968,6 +997,13 @@ ClippingRectangle {
         function onRefreshRequested(name) {
             if (name === root.moduleName || name === "all")
                 root.refresh();
+        }
+        function onPopupRequested(name) {
+            if (name === root.moduleName && root.moduleVisible) {
+                root.popupPinned = !root.popupPinned;
+                if (root.popupPinned)
+                    root.refresh();
+            }
         }
         target: root.ipc
     }

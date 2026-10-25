@@ -1,5 +1,6 @@
 import "../components"
 import QtQuick
+import Quickshell
 import Quickshell.Io
 
 ModulePill {
@@ -14,6 +15,8 @@ ModulePill {
     property bool moduleVisible: true
     property string onClickCommand: ""
     property string onRightClickCommand: ""
+    property string onMiddleClickCommand: ""
+    property bool detachedActions: false
     property string textOverride: ""
     property string format: "{}"
     property string icon: ""
@@ -63,15 +66,19 @@ ModulePill {
         return format.replace(/\{\}/g, value).replace(/\{icon\}/g, moduleIcon);
     }
 
-    function runCommand(commandText) {
+    function runCommand(commandText, detached = false) {
         if (commandText.length === 0)
-            return ;
+            return;
 
-        actionRunner.exec(["/usr/bin/sh", "-lc", commandText]);
+        const command = ["/usr/bin/sh", "-lc", commandText];
+        if (detached)
+            Quickshell.execDetached(command);
+        else if (!actionRunner.running)
+            actionRunner.exec(command);
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return ;
 
         if (textOverride.length > 0) {
@@ -119,10 +126,11 @@ ModulePill {
     visible: moduleVisible && (!hideEmptyText || currentText.length > 0)
     onClicked: (button) => {
         if (button === Qt.LeftButton)
-            runCommand(onClickCommand);
-
-        if (button === Qt.RightButton)
-            runCommand(onRightClickCommand || `qs ipc -c main call bar refreshModule ${moduleName}`);
+            runCommand(onClickCommand, detachedActions);
+        else if (button === Qt.RightButton)
+            runCommand(onRightClickCommand || `qs ipc -c main call bar refreshModule ${moduleName}`, detachedActions);
+        else if (button === Qt.MiddleButton)
+            runCommand(onMiddleClickCommand);
 
     }
     Component.onCompleted: refresh()
@@ -152,6 +160,7 @@ ModulePill {
 
     Process {
         id: actionRunner
+        onExited: root.refresh()
     }
 
     Connections {

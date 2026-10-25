@@ -9,6 +9,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 5000
     property int hoverInterval: 1000
@@ -50,7 +51,7 @@ ClippingRectangle {
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return;
 
         refreshRunner.exec(["/usr/bin/sh", "-lc", queryCommand]);
@@ -75,9 +76,15 @@ ClippingRectangle {
             return;
         }
 
-        utilization = clampPercent(parts[0]);
-        memoryUsed = Math.max(0, Number(parts[1] || 0));
-        memoryTotal = Math.max(0, Number(parts[2] || 0));
+        const metrics = parts.slice(0, 3).map(value => value.length > 0 ? Number(value) : NaN);
+        if (metrics.some(value => !Number.isFinite(value) || value < 0) || metrics[2] <= 0) {
+            errorText = "GPU metrics unavailable: " + plainText(gpuLine);
+            return;
+        }
+
+        utilization = clampPercent(metrics[0]);
+        memoryUsed = metrics[1];
+        memoryTotal = metrics[2];
         driverVersion = String(parts[3] || "").trim();
         gpuName = String(parts.slice(4).join(",") || "NVIDIA GPU").trim();
         errorText = "";
@@ -334,6 +341,14 @@ ClippingRectangle {
 
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
+        }
+    }
+
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "gpu" || name === "all")
+                root.refresh();
         }
     }
 

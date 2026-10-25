@@ -16,7 +16,8 @@ ClippingRectangle {
     property var systemUnits: []
     property var userUnits: []
     property string errorText: ""
-    readonly property string queryCommand: "export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus; systemctl --failed --type=service --no-legend --plain 2>/dev/null | while read -r unit rest; do [ -n \"$unit\" ] && printf 'system\\t%s\\n' \"$unit\"; done; systemctl --user --failed --type=service --no-legend --plain 2>/dev/null | while read -r unit rest; do [ -n \"$unit\" ] && printf 'user\\t%s\\n' \"$unit\"; done"
+    property string actionError: ""
+    readonly property string queryCommand: Quickshell.shellPath("scripts/systemd_failed_units.py")
     readonly property string restartCommand: "/home/misti/.config/quickshell/main/scripts/restart_failed_units.sh"
     readonly property int systemCount: systemUnits.length
     readonly property int userCount: userUnits.length
@@ -24,37 +25,35 @@ ClippingRectangle {
     readonly property bool tooltipVisible: mouse.containsMouse
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/sh", "-lc", queryCommand]);
+        refreshRunner.exec(["/usr/bin/python3", queryCommand]);
     }
 
     function runRestart() {
+        if (actionRunner.running)
+            return;
+        actionError = "";
         actionRunner.exec([restartCommand]);
     }
 
     function applyOutput(output) {
-        const nextSystem = [];
-        const nextUser = [];
-        const trimmed = output.trim();
-
-        if (trimmed.length > 0) {
-            for (const line of trimmed.split("\n")) {
-                const parts = line.trim().split("\t");
-                if (parts.length < 2 || parts[1].length === 0)
-                    continue;
-
-                if (parts[0] === "system")
-                    nextSystem.push(parts[1]);
-                else if (parts[0] === "user")
-                    nextUser.push(parts[1]);
-            }
+        try {
+            const data = JSON.parse(output);
+            if (!data || typeof data.error !== "string"
+                    || !(data.systemUnits === null || Array.isArray(data.systemUnits))
+                    || !(data.userUnits === null || Array.isArray(data.userUnits))
+                    || ((data.systemUnits === null || data.userUnits === null) && !data.error))
+                throw new Error("Invalid service response");
+            if (Array.isArray(data.systemUnits))
+                systemUnits = data.systemUnits;
+            if (Array.isArray(data.userUnits))
+                userUnits = data.userUnits;
+            errorText = String(data.error || "");
+        } catch (error) {
+            errorText = "Unable to read failed systemd services";
         }
-
-        systemUnits = nextSystem;
-        userUnits = nextUser;
-        errorText = "";
     }
 
     implicitWidth: compactContent.implicitWidth + 20
@@ -64,7 +63,7 @@ ClippingRectangle {
     border.color: theme.alpha(theme.red, 0.72)
     border.width: 1
     contentUnderBorder: true
-    visible: moduleVisible && (totalCount > 0 || errorText.length > 0)
+    visible: moduleVisible && (totalCount > 0 || errorText.length > 0 || actionError.length > 0)
 
     Theme {
         id: theme
@@ -90,7 +89,7 @@ ClippingRectangle {
             color: theme.red
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
-            text: String(totalCount)
+            text: totalCount > 0 ? String(totalCount) : "err"
             textFormat: Text.PlainText
         }
     }
@@ -152,7 +151,7 @@ ClippingRectangle {
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.tooltipFontPixelSize + 1
                                 font.bold: true
-                                text: `${root.totalCount} failed systemd service${root.totalCount === 1 ? "" : "s"}`
+                                text: root.errorText ? "Service check failed" : `${root.totalCount} failed systemd service${root.totalCount === 1 ? "" : "s"}`
                             }
 
                             Text {
@@ -163,6 +162,17 @@ ClippingRectangle {
                                 text: "Left-click to restart, right-click to refresh"
                             }
                         }
+                    }
+
+                    Text {
+                        width: parent.width
+                        visible: root.errorText.length > 0 || root.actionError.length > 0
+                        text: [root.errorText, root.actionError].filter(value => value.length > 0).join("\n")
+                        color: theme.red
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.tooltipFontPixelSize
+                        wrapMode: Text.Wrap
+                        textFormat: Text.PlainText
                     }
 
                     UnitSection {
@@ -255,6 +265,12 @@ ClippingRectangle {
 
     Process {
         id: actionRunner
+        stdout: StdioCollector {}
+        stderr: StdioCollector { id: restartErrors }
+        onExited: (exitCode, exitStatus) => {
+            root.actionError = exitCode === 0 ? "" : restartErrors.text.trim() || "Service restart failed";
+            root.refresh();
+        }
     }
 
     Connections {

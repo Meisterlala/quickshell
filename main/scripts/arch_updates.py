@@ -143,33 +143,7 @@ def classify_updates(repo_updates, aur_updates):
     return result
 
 
-def main():
-    repo_code, repo_out, repo_err = query_repo_updates()
-    aur_code, aur_out, aur_err = run_cmd(["paru", "-Qua", "--devel", "--color", "never"])
-
-    if repo_code != 0 and aur_code != 0:
-        error = (repo_err or aur_err or "Failed to query updates").strip()
-        cached = load_cache()
-        if cached and is_transient_error(error):
-            cached["stale"] = True
-            cached["status"] = "updating"
-            print(json.dumps(cached))
-            return
-
-        print(
-            json.dumps(
-                {
-                    "error": error,
-                    "count": 0,
-                    "state": "error",
-                    "counts": {},
-                    "items": [],
-                }
-            )
-        )
-        return
-
-    items = classify_updates(parse_upgrade_lines(repo_out), parse_upgrade_lines(aur_out))
+def payload_for(items):
     counts = {}
     for item in items:
         counts[item["source"]] = counts.get(item["source"], 0) + 1
@@ -185,6 +159,39 @@ def main():
         "stale": False,
         "status": "ok",
     }
+    return payload
+
+
+def main():
+    repo_code, repo_out, repo_err = query_repo_updates()
+    aur_code, aur_out, aur_err = run_cmd(["paru", "-Qua", "--devel", "--color", "never"])
+    # checkupdates uses exit 2 for a successful check with no updates.
+    repo_ok = repo_code == 0 or (repo_code == 2 and not repo_out.strip() and not repo_err.strip())
+    aur_ok = aur_code == 0
+    items = classify_updates(
+        parse_upgrade_lines(repo_out) if repo_ok else [],
+        parse_upgrade_lines(aur_out) if aur_ok else [],
+    )
+
+    if not repo_ok or not aur_ok:
+        errors = []
+        if not repo_ok:
+            errors.append("Repository check failed: " + (repo_err.strip() or f"exit {repo_code}"))
+        if not aur_ok:
+            errors.append("AUR check failed: " + (aur_err.strip() or f"exit {aur_code}"))
+        error = "\n".join(errors)
+        cached = load_cache()
+        payload = dict(cached) if isinstance(cached, dict) else payload_for(items)
+        payload.update(
+            error=error,
+            state="error",
+            stale=isinstance(cached, dict),
+            status="updating" if is_transient_error(error) else "partial" if repo_ok or aur_ok else "error",
+        )
+        print(json.dumps(payload))
+        return
+
+    payload = payload_for(items)
     save_cache(payload)
     print(json.dumps(payload))
 

@@ -8,12 +8,6 @@ ScriptModule {
     parseJson: false
     onClickCommand: "pwvucontrol"
     onRightClickCommand: "helvum"
-    onClicked: (button) => {
-        if (button === Qt.MiddleButton)
-            runCommand("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle");
-        else if (button === Qt.LeftButton)
-            runCommand(onClickCommand);
-        else if (button === Qt.RightButton)
-            runCommand(onRightClickCommand);
-    }
+    onMiddleClickCommand: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    detachedActions: true
 }

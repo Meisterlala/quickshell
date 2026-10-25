@@ -17,9 +17,12 @@ Scope {
       root.refreshRequested(name);
     }
 
-    function togglePopup(name: string): void {
+    function togglePopup(name: string): bool {
+      if (!["calendar", "habits", "k8s-alerts"].includes(name))
+        return false;
       root.lastMessage = `popup:${name}`;
       root.popupRequested(name);
+      return true;
     }
 
     function getState(): string {

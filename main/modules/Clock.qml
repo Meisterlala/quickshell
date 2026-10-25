@@ -8,6 +8,8 @@ Item {
     id: root
 
     required property var barWindow
+    property var ipc: null
+    property bool popupIpcEnabled: true
     property bool alternativeMode: false
     property bool popupOpen: false
     property bool popupPinned: false
@@ -59,10 +61,24 @@ Item {
         }
     }
 
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if ((name === "calendar" || name === "all") && calendarLoader.item)
+                calendarLoader.item.refresh();
+        }
+        function onPopupRequested(name) {
+            if (name === "calendar" && root.popupIpcEnabled) {
+                root.popupPinned = !root.popupPinned;
+                root.updateHover();
+            }
+        }
+    }
+
     PopupWindow {
         anchor.window: root.barWindow
-        anchor.rect.x: root.barWindow.width - width - 8
-        anchor.rect.y: root.barWindow.height + 8
+        anchor.rect.x: root.barWindow ? root.barWindow.width - width - 8 : 0
+        anchor.rect.y: root.barWindow ? root.barWindow.height + 8 : 0
         implicitWidth: 380
         implicitHeight: calendarLoader.item ? calendarLoader.item.implicitHeight : 500
         color: "transparent"

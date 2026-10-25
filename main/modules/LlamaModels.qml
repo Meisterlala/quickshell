@@ -10,6 +10,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 5000
     property int activeInterval: 1000
@@ -395,6 +396,14 @@ ClippingRectangle {
 
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
+        }
+    }
+
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "llama-models" || name === "all")
+                root.refresh();
         }
     }
 

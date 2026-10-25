@@ -183,10 +183,14 @@ def parse_traffic(xml: str, config: Config) -> Traffic:
     except ET.ParseError as exc:
         fail(config, f"Could not parse FRITZ!Box response: {exc}")
 
-    return Traffic(
-        down_mbit=average_mbit(parse_samples(xml_text(root, "Newds_current_bps"))),
-        up_mbit=average_mbit(parse_samples(xml_text(root, "Newus_current_bps"))),
-    )
+    if any(element.tag.rsplit("}", 1)[-1] == "Fault" for element in root.iter()):
+        fail(config, "FRITZ!Box returned a SOAP fault")
+    down = parse_samples(xml_text(root, "Newds_current_bps"))
+    up = parse_samples(xml_text(root, "Newus_current_bps"))
+    if not down or not up or any(value < 0 for value in down + up):
+        fail(config, "FRITZ!Box response is missing valid traffic samples")
+
+    return Traffic(down_mbit=average_mbit(down), up_mbit=average_mbit(up))
 
 
 def load_visible_state(config: Config) -> bool:

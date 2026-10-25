@@ -9,6 +9,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 300000
     property string command: "/home/misti/.config/quickshell/main/scripts/codex_usage.py"
@@ -61,7 +62,7 @@ ClippingRectangle {
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return;
 
         refreshRunner.exec(["/usr/bin/python3", command]);
@@ -368,6 +369,14 @@ ClippingRectangle {
             onStreamFinished: root.applyOutput(this.text)
         }
 
+    }
+
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "codex-usage" || name === "all")
+                root.refresh();
+        }
     }
 
     Component.onCompleted: refresh()

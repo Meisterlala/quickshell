@@ -61,14 +61,14 @@ ClippingRectangle {
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return;
 
         refreshRunner.exec(["/usr/bin/python3", command]);
     }
 
     function runUpdate() {
-        actionRunner.exec(["/usr/bin/sh", "-lc", updateCommand]);
+        Quickshell.execDetached(["/usr/bin/sh", "-lc", updateCommand]);
     }
 
     function applyOutput(output) {
@@ -157,7 +157,7 @@ ClippingRectangle {
         anchor.rect.width: root.width
         anchor.rect.height: root.height
         implicitWidth: 720
-        implicitHeight: Math.min(maxTooltipHeight, headerColumn.implicitHeight + listFlickable.height + 28)
+        implicitHeight: Math.min(maxTooltipHeight, headerColumn.implicitHeight + (listFlickable.visible ? listFlickable.height + 10 : 0) + 28)
         color: "transparent"
         visible: root.barWindow && root.tooltipVisible
 
@@ -208,7 +208,7 @@ ClippingRectangle {
                                 color: theme.subtext0
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.tooltipFontPixelSize
-                                text: root.stale ? "Last known state while updates are running" : "Left-click to run paru -Syu"
+                                text: root.stale ? "Last successful check · current check unavailable" : root.hasError ? "Some update sources could not be checked" : "Left-click to run paru -Syu"
                             }
                         }
                     }
@@ -225,7 +225,7 @@ ClippingRectangle {
                     }
 
                     Row {
-                        visible: !root.hasError
+                        visible: root.items.length > 0
                         width: parent.width
                         spacing: 10
 
@@ -243,7 +243,7 @@ ClippingRectangle {
                     }
 
                     Rectangle {
-                        visible: !root.hasError && root.items.length > 0
+                        visible: root.items.length > 0
                         width: parent.width
                         height: 1
                         color: theme.alpha(theme.text, 0.1)
@@ -253,9 +253,9 @@ ClippingRectangle {
                 Flickable {
                     id: listFlickable
 
-                    visible: !root.hasError
+                    visible: root.items.length > 0
                     width: parent.width
-                    height: Math.max(0, Math.min(listColumn.implicitHeight, tooltipWindow.maxTooltipHeight - headerColumn.implicitHeight - 28))
+                    height: Math.max(0, Math.min(listColumn.implicitHeight, tooltipWindow.maxTooltipHeight - headerColumn.implicitHeight - 38))
                     contentWidth: width
                     contentHeight: listColumn.implicitHeight
                     clip: true
@@ -412,10 +412,6 @@ ClippingRectangle {
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
         }
-    }
-
-    Process {
-        id: actionRunner
     }
 
     Connections {

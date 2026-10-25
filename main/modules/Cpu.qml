@@ -9,6 +9,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 3000
     property int hoverInterval: 1000
@@ -97,7 +98,8 @@ ClippingRectangle {
     function statTotals(values) {
         const idle = Number(values[3] || 0) + Number(values[4] || 0);
         let total = 0;
-        for (const value of values)
+        // guest and guest_nice are already included in user and nice.
+        for (const value of values.slice(0, 8))
             total += Number(value || 0);
 
         return {
@@ -166,7 +168,7 @@ ClippingRectangle {
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running || loadRunner.running)
             return;
 
         refreshRunner.exec(["/usr/bin/sh", "-lc", statCommand]);
@@ -459,6 +461,14 @@ ClippingRectangle {
 
         stdout: StdioCollector {
             onStreamFinished: root.applyLoadOutput(this.text)
+        }
+    }
+
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "cpu" || name === "all")
+                root.refresh();
         }
     }
 

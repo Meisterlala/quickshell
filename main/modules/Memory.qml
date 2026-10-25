@@ -9,6 +9,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 5000
     property real memTotal: 0
@@ -458,6 +459,14 @@ ClippingRectangle {
 
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
+        }
+    }
+
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "memory" || name === "all")
+                root.refresh();
         }
     }
 

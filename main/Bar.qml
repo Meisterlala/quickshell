@@ -22,6 +22,14 @@ Scope {
         id: theme
     }
 
+    Connections {
+        target: root.ipc
+        function onPopupRequested(name) {
+            if (name === "habits")
+                root.alternativeMode = false;
+        }
+    }
+
     Variants {
         model: Quickshell.screens
 
@@ -104,6 +112,7 @@ Scope {
                 }
 
                 CodexUsage {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                 }
@@ -117,6 +126,7 @@ Scope {
                 }
 
                 Audio {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isPrimary(bar.screen)
                 }
@@ -132,11 +142,13 @@ Scope {
                 }
 
                 LlamaModels {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                 }
 
                 Gpu {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     interval: 5000
@@ -144,18 +156,21 @@ Scope {
                 }
 
                 Cpu {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     interval: 3000
                 }
 
                 Memory {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                     interval: 5000
                 }
 
                 K8sAlerts {
+                    ipc: root.ipc
                     barWindow: bar
                     moduleVisible: root.isSecondary(bar.screen)
                 }
@@ -206,6 +221,8 @@ Scope {
                 }
 
                 Clock {
+                    ipc: root.ipc
+                    popupIpcEnabled: Hyprland.focusedMonitor !== null && bar.screen !== null && Hyprland.focusedMonitor.name === bar.screen.name
                     barWindow: bar
                     alternativeMode: root.alternativeMode
                     onAlternativeModeToggled: root.alternativeMode = !root.alternativeMode

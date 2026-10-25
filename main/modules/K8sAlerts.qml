@@ -9,6 +9,7 @@ ClippingRectangle {
     id: root
 
     required property var barWindow
+    property var ipc: null
     property bool moduleVisible: true
     property int interval: 60000
     property string command: "/home/misti/.config/quickshell/main/scripts/k8s_alerts.py"
@@ -32,7 +33,7 @@ ClippingRectangle {
     }
 
     function refresh() {
-        if (!moduleVisible)
+        if (!moduleVisible || refreshRunner.running)
             return;
 
         refreshRunner.exec(["/usr/bin/python3", command]);
@@ -48,7 +49,7 @@ ClippingRectangle {
     }
 
     function runCommand(commandText) {
-        actionRunner.exec(["/usr/bin/sh", "-lc", commandText]);
+        Quickshell.execDetached(["/usr/bin/sh", "-lc", commandText]);
     }
 
     function severityColor(severity) {
@@ -85,8 +86,6 @@ ClippingRectangle {
             watchdogRunning = Boolean(parsed.watchdogRunning);
             counts = parsed.counts || counts;
             alerts = parsed.alerts || [];
-            if (state === "ok")
-                popupPinned = false;
         } catch (error) {
             errorText = plainTooltip(trimmed);
             state = "error";
@@ -100,7 +99,7 @@ ClippingRectangle {
     border.color: theme.alpha(theme.text, 0.1)
     border.width: 1
     contentUnderBorder: true
-    visible: moduleVisible && hasProblem
+    visible: moduleVisible && (hasProblem || popupPinned)
 
     Theme {
         id: theme
@@ -502,8 +501,19 @@ ClippingRectangle {
         }
     }
 
-    Process {
-        id: actionRunner
+    Connections {
+        target: root.ipc
+        function onRefreshRequested(name) {
+            if (name === "k8s-alerts" || name === "all")
+                root.refresh();
+        }
+        function onPopupRequested(name) {
+            if (name === "k8s-alerts" && root.moduleVisible) {
+                root.popupPinned = !root.popupPinned;
+                if (root.popupPinned)
+                    root.refreshInteractive();
+            }
+        }
     }
 
     Component.onCompleted: refresh()

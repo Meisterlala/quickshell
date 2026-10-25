@@ -3,6 +3,8 @@
 
 import datetime
 import json
+import os
+import selectors
 import subprocess
 import time
 
@@ -39,16 +41,19 @@ def call_rate_limits():
         CODEX_COMMAND,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+        stderr=subprocess.DEVNULL,
+        bufsize=0,
     )
+    selector = selectors.DefaultSelector()
 
     def send(msg):
         assert proc.stdin is not None
-        proc.stdin.write(json.dumps(msg) + "\n")
+        proc.stdin.write((json.dumps(msg) + "\n").encode())
         proc.stdin.flush()
 
     try:
+        assert proc.stdout is not None
+        selector.register(proc.stdout, selectors.EVENT_READ)
         send(
             {
                 "jsonrpc": "2.0",
@@ -61,49 +66,62 @@ def call_rate_limits():
             }
         )
 
-        deadline = time.time() + REQUEST_TIMEOUT_SECONDS
+        deadline = time.monotonic() + REQUEST_TIMEOUT_SECONDS
         initialized_sent = False
-        while time.time() < deadline:
-            assert proc.stdout is not None
-            line = proc.stdout.readline()
-            if not line:
+        buffer = b""
+        while (remaining := deadline - time.monotonic()) > 0:
+            if not selector.select(remaining):
                 break
+            chunk = os.read(proc.stdout.fileno(), 65536)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                try:
+                    msg = json.loads(line)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+                if not isinstance(msg, dict):
+                    continue
 
-            try:
-                msg = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            if str(msg.get("id")) == "1" and not initialized_sent:
-                initialized_sent = True
-                send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
-                send(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": "2",
-                        "method": "account/rateLimits/read",
-                        "params": {},
-                    }
-                )
-            elif str(msg.get("id")) == "2":
-                res = msg.get("result") or {}
-                return (res.get("rateLimits") or {}), None
+                request_id = str(msg.get("id"))
+                if request_id in ("1", "2") and msg.get("error"):
+                    error = msg["error"]
+                    message = error.get("message", str(error)) if isinstance(error, dict) else str(error)
+                    return None, message
+                if request_id == "1" and not initialized_sent:
+                    initialized_sent = True
+                    send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
+                    send(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": "2",
+                            "method": "account/rateLimits/read",
+                            "params": {},
+                        }
+                    )
+                elif request_id == "2":
+                    res = msg.get("result") or {}
+                    return (res.get("rateLimits") or {}), None
 
         return None, "No account/rateLimits/read response from codex app-server"
     finally:
-        try:
-            if proc.stdin is not None:
+        selector.close()
+        if proc.stdin is not None:
+            try:
                 proc.stdin.close()
-        except Exception:
-            pass
+            except OSError:
+                pass
         try:
             proc.terminate()
             proc.wait(timeout=1)
-        except Exception:
-            try:
-                proc.kill()
-            except Exception:
-                pass
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        finally:
+            if proc.stdout is not None:
+                proc.stdout.close()
 
 
 def usage_window(label, window, now):

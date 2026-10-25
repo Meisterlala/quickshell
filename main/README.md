@@ -15,7 +15,20 @@ qs ipc -c main show
 qs ipc -c main call bar refreshModule updates
 qs ipc -c main call bar refreshModule all
 qs ipc -c main call bar getState
+qs ipc -c main call bar togglePopup calendar
 ```
+
+`refreshModule all` reaches every enabled script-backed module and refreshes
+calendars only while open. Individual names include `audio`, `cpu`, `gpu`,
+`memory`, `codex-usage`, `llama-models`, `k8s-alerts`, `fritz-traffic`, `habits`,
+`updates`, `systemd-failed-units`, and `calendar`. Running requests finish rather
+than being cancelled by the next poll.
+
+`togglePopup` accepts `calendar`, `habits`, and `k8s-alerts`; unknown names return
+`false`. Calendar IPC targets the focused monitor. Habits IPC restores the module
+from alternative mode. Habit changes are queued, and failed changes remain visible.
+Audio left/right clicks launch detached `pwvucontrol`/`helvum`; middle-click
+mutes/unmutes and refreshes the indicator.
 
 This config intentionally does not modify Hyprland autostart yet. Keep `waybar.service` enabled until the Quickshell bar has been tested.
 
@@ -48,7 +61,11 @@ No calendar process or polling timer runs while the popup is closed. QML changes
 auto-reload: use `qmllint main/shell.qml` and `qs log -c main` for validation;
 do not launch a second instance.
 
-Tests (synthetic calendars and an offscreen QML runner; no desktop interaction):
+Tests use synthetic calendars, mocked status backends, and isolated offscreen
+Quickshell instances containing copies of the real QML modules. They cover audio
+click dispatch, mutation queues, polling, IPC, GPU/CPU readings, service failures,
+update failures, and Codex deadlines. No desktop interaction, real service
+restarts, audio changes, router requests, or account requests occur:
 
 ```sh
 python3 -m unittest discover -s tests -v
