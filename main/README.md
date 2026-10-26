@@ -24,7 +24,7 @@ calendars only while open. Individual names include `audio`, `cpu`, `gpu`,
 `updates`, `systemd-failed-units`, and `calendar`. Running requests finish rather
 than being cancelled by the next poll.
 
-`togglePopup` accepts `calendar`, `habits`, and `k8s-alerts`; unknown names return
+`togglePopup` accepts `calendar`, `habits`, `k8s-alerts`, and `notifications`; unknown names return
 `false`. Calendar IPC targets the focused monitor. Habits IPC restores the module
 from alternative mode. Habit changes are queued, and failed changes remain visible.
 Audio left/right clicks launch detached `pwvucontrol`/`helvum`; middle-click
@@ -61,13 +61,47 @@ No calendar process or polling timer runs while the popup is closed. QML changes
 auto-reload: use `qmllint main/shell.qml` and `qs log -c main` for validation;
 do not launch a second instance.
 
-Tests use synthetic calendars, mocked status backends, and isolated offscreen
-Quickshell instances containing copies of the real QML modules. They cover audio
-click dispatch, mutation queues, polling, IPC, GPU/CPU readings, service failures,
-update failures, and Codex deadlines. No desktop interaction, real service
-restarts, audio changes, router requests, or account requests occur:
+## Notifications
+
+Quickshell owns `org.freedesktop.Notifications` directly; SwayNC is not needed.
+The service and card separation is inspired by [Omarchy 4](https://github.com/omacom/omarchy/tree/v4.0.6/shell/plugins/notifications),
+with presentation matching this config rather than importing Omarchy's shell.
+
+Popups appear on the focused display. The center fits its content and scrolls
+when it reaches the available screen height. A compact row provides DND, sleep
+inhibition, the second-monitor DPMS toggle, and clear-all, without a title or Close
+button. Escape, focus loss, and Super+X close it. Normal on-demand focus replaces
+global input grabs, so clicks outside reach the underlying app. The background
+context menu also retains these controls. Media controls use native MPRIS
+subscriptions. System controls are queried only while the center is open.
+
+Normal/low popups default to 10/5 seconds. Explicit timeouts are honored, zero
+and critical notifications stay until dismissed, and hover/reply input pauses
+expiry. Swipe a card left or right to dismiss it; short drags spring back. Icons
+and notification images occupy the right side of the card. DND suppresses ordinary
+popups but retains their history; critical alerts
+bypass it. Transient notifications are never saved. Live notification actions
+and inline replies remain available after a popup leaves the screen.
+
+The latest 100 non-transient notifications and DND preference are saved under
+`$XDG_STATE_HOME/quickshell/notifications.json` (default
+`~/.local/state/quickshell/notifications.json`) in a private directory. Full shell
+restarts restore text history, not dead actions or temporary images. QML live
+reloads retain live notifications and their actions.
 
 ```sh
-python3 -m unittest discover -s tests -v
-QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input tests/qml -o -,txt
+qs ipc -c main call notifications toggle
+qs ipc -c main call notifications setDnd true
+qs ipc -c main call notifications setDnd false
+qs ipc -c main call notifications clear
+qs ipc -c main call notifications getState
 ```
+
+The user D-Bus activation file points to `quickshell-main.service`, which is
+already started by Hyprland. GameMode uses the DND IPC calls. Hyprland excludes
+`quickshell-notifications` and `quickshell-notification-center` from screen sharing.
+Both protected surfaces are bounded to their content. A full-screen transparent
+surface would black out the entire shared display; an input mask does not limit
+screen-sharing exclusion. Dismissal observes normal window focus loss; it must
+not use `HyprlandFocusGrab`, exclusive keyboard focus, or a full-screen input veil.
+Temporary validation belongs in `/tmp`, not in this repository.

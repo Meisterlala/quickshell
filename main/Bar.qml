@@ -8,6 +8,7 @@ Scope {
     id: root
 
     required property var ipc
+    required property var notifications
     property bool alternativeMode: false
 
     function isPrimary(screen) {
@@ -82,6 +83,7 @@ Scope {
 
                 NotificationModule {
                     barWindow: bar
+                    service: root.notifications
                     moduleVisible: root.isPrimary(bar.screen)
                 }
 

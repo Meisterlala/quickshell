@@ -10,8 +10,18 @@ Scope {
         id: shellIpc
     }
 
+    Notifications {
+        id: notificationService
+        ipc: shellIpc
+    }
+
+    NotificationWindows {
+        service: notificationService
+    }
+
     Bar {
         ipc: shellIpc
+        notifications: notificationService
     }
 
 }

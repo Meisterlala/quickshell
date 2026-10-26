@@ -18,7 +18,7 @@ Scope {
     }
 
     function togglePopup(name: string): bool {
-      if (!["calendar", "habits", "k8s-alerts"].includes(name))
+      if (!["calendar", "habits", "k8s-alerts", "notifications"].includes(name))
         return false;
       root.lastMessage = `popup:${name}`;
       root.popupRequested(name);
