@@ -21,7 +21,9 @@ CACHE_PATH = (
 
 def run_cmd(args, timeout=PARU_TIMEOUT):
     try:
-        proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+        # Repository parsing relies on pacman's English field names.
+        proc = subprocess.run(args, capture_output=True, text=True, timeout=timeout,
+                              env={**os.environ, "LC_ALL": "C"})
         return proc.returncode, proc.stdout, proc.stderr
     except Exception as exc:
         return 1, "", str(exc)

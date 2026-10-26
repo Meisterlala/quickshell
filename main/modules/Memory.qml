@@ -1,7 +1,7 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 
@@ -43,17 +43,13 @@ ClippingRectangle {
     readonly property real swapUsed: Math.max(0, swapTotal - swapFree)
     readonly property string kernelAccent: "#fab387"
     readonly property string zswapAccent: "#cba6f7"
-    readonly property real memPercent: memTotal > 0 ? clampPercent(memUsed * 100 / memTotal) : 0
-    readonly property real kernelPercent: memTotal > 0 ? clampPercent(kernelUsed * 100 / memTotal) : 0
-    readonly property real zswapPercent: memTotal > 0 ? clampPercent(zswap * 100 / memTotal) : 0
-    readonly property real swapPercent: swapTotal > 0 ? clampPercent(swapUsed * 100 / swapTotal) : 0
+    readonly property real memPercent: memTotal > 0 ? ModuleData.clampPercent(memUsed * 100 / memTotal) : 0
+    readonly property real kernelPercent: memTotal > 0 ? ModuleData.clampPercent(kernelUsed * 100 / memTotal) : 0
+    readonly property real zswapPercent: memTotal > 0 ? ModuleData.clampPercent(zswap * 100 / memTotal) : 0
+    readonly property real swapPercent: swapTotal > 0 ? ModuleData.clampPercent(swapUsed * 100 / swapTotal) : 0
     readonly property string state: errorText.length > 0 ? "error" : memPercent >= 95 ? "critical" : memPercent >= 85 ? "warning" : "normal"
     readonly property string accent: state === "error" || state === "critical" ? theme.red : state === "warning" ? theme.yellow : theme.sky
     readonly property bool tooltipVisible: mouse.containsMouse
-
-    function clampPercent(value) {
-        return Math.max(0, Math.min(100, Number(value || 0)));
-    }
 
     function gibText(valueKiB) {
         return `${(Number(valueKiB || 0) / 1048576).toFixed(1)} GiB`;
@@ -172,23 +168,14 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 340
         implicitHeight: detailsColumn.implicitHeight + 28
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent
@@ -320,86 +307,6 @@ ClippingRectangle {
                         value: root.tmpfsAvailable ? root.filesystemText(root.tmpfsUsed) : "—"
                     }
                 }
-            }
-        }
-    }
-
-    component MetricBar: Item {
-        id: metricRoot
-
-        required property string label
-        required property real percent
-        required property string valueText
-        required property string accent
-        required property string fillColor
-        property real leadingPercent: 0
-        property string leadingFillColor: fillColor
-        property real secondaryPercent: 0
-        property string secondaryFillColor: fillColor
-        readonly property real boundedSecondaryPercent: Math.min(root.clampPercent(percent), root.clampPercent(secondaryPercent))
-        readonly property real boundedLeadingPercent: Math.min(root.clampPercent(percent) - boundedSecondaryPercent, root.clampPercent(leadingPercent))
-        readonly property real primaryPercent: root.clampPercent(percent) - boundedLeadingPercent - boundedSecondaryPercent
-
-        height: 24
-
-        ClippingRectangle {
-            anchors.fill: parent
-            radius: 5
-            color: theme.alpha(theme.crust, 0.3)
-            border.color: theme.alpha(String(metricRoot.accent), 0.22)
-            border.width: 1
-            contentUnderBorder: true
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                visible: metricRoot.boundedLeadingPercent > 0
-                width: parent.width * metricRoot.boundedLeadingPercent / 100
-                color: metricRoot.leadingFillColor
-            }
-
-            Rectangle {
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                visible: metricRoot.primaryPercent > 0
-                x: parent.width * metricRoot.boundedLeadingPercent / 100
-                width: parent.width * metricRoot.primaryPercent / 100
-                color: metricRoot.fillColor
-            }
-
-            Rectangle {
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                visible: metricRoot.boundedSecondaryPercent > 0
-                x: parent.width * (metricRoot.boundedLeadingPercent + metricRoot.primaryPercent) / 100
-                width: parent.width * metricRoot.boundedSecondaryPercent / 100
-                color: metricRoot.secondaryFillColor
-            }
-        }
-
-        Row {
-            anchors.fill: parent
-            anchors.leftMargin: 7
-            anchors.rightMargin: 7
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 52
-                color: theme.text
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                text: metricRoot.label
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 52
-                color: theme.text
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                horizontalAlignment: Text.AlignRight
-                text: metricRoot.valueText
             }
         }
     }

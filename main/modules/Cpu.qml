@@ -1,7 +1,7 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 
@@ -24,10 +24,6 @@ ClippingRectangle {
     readonly property string statCommand: "awk '/^cpu[0-9 ]/ {print}' /proc/stat"
     readonly property string loadCommand: "awk '{print $1, $2, $3}' /proc/loadavg"
     readonly property bool tooltipVisible: mouse.containsMouse && cores.length > 0
-
-    function clampPercent(value) {
-        return Math.max(0, Math.min(100, Number(value || 0)));
-    }
 
     function usageClass(value) {
         if (value > 95)
@@ -86,7 +82,7 @@ ClippingRectangle {
 
     function appendUsageHistory(value) {
         const nextHistory = usageHistory.slice();
-        nextHistory.push(clampPercent(value));
+        nextHistory.push(ModuleData.clampPercent(value));
         usageHistory = nextHistory.slice(Math.max(0, nextHistory.length - 48));
     }
 
@@ -136,7 +132,7 @@ ClippingRectangle {
         if (totalDelta <= 0)
             return 0;
 
-        return clampPercent((totalDelta - idleDelta) * 100 / totalDelta);
+        return ModuleData.clampPercent((totalDelta - idleDelta) * 100 / totalDelta);
     }
 
     function applyOutput(output) {
@@ -215,24 +211,16 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
         readonly property int maxTooltipHeight: root.barWindow && root.barWindow.screen ? Math.max(120, Math.round((root.barWindow.screen.height - root.barWindow.height - margin * 2) * 0.75)) : 480
 
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 430
         implicitHeight: Math.min(maxTooltipHeight, detailsColumn.implicitHeight + 28)
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent

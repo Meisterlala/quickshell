@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 ICON_ALERT = ""
 ICON_ERROR = ""
 TIMEOUT = os.environ.get("K8S_ALERTS_TIMEOUT", "8s")
+# --request-timeout does not bound an exec credential plugin or a hung kubectl.
+COMMAND_TIMEOUT_SECONDS = 30
 URL_RE = re.compile(r"https?://[^\s)\]>\"']+")
 
 
@@ -40,7 +42,12 @@ def error_out(message: str, context: str = "", namespace: str = "") -> None:
 
 
 def run(args: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(args, capture_output=True, text=True)
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=COMMAND_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        error_out(f"{args[0]} timed out after {COMMAND_TIMEOUT_SECONDS}s")
+    except OSError as error:
+        error_out(f"Could not run {args[0]}: {error}")
 
 
 def run_kubectl(args: list[str]) -> str:
@@ -78,17 +85,30 @@ def get_namespace(cache_file: Path) -> str:
     env_ns = os.environ.get("ALERTMANAGER_NAMESPACE", "").strip()
     if env_ns:
         return env_ns
-    if cache_file.exists():
+    try:
         cached = cache_file.read_text(encoding="utf-8").strip()
         if cached:
             return cached
-    ns = discover_namespace()
-    if ns:
-        try:
-            cache_file.write_text(ns + "\n", encoding="utf-8")
-        except Exception:
-            pass
-    return ns
+    except (OSError, UnicodeError):
+        pass
+    namespace = discover_namespace()
+    if namespace:
+        save_namespace(cache_file, namespace)
+    return namespace
+
+
+def save_namespace(cache_file: Path, namespace: str) -> None:
+    try:
+        cache_file.write_text(namespace + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def fetch_alerts(namespace: str) -> str:
+    return run_kubectl([
+        "get", "--raw",
+        f"/api/v1/namespaces/{namespace}/services/http:alertmanager-operated:9093/proxy/api/v2/alerts",
+    ])
 
 
 def shorten_urls(value: str) -> str:
@@ -171,37 +191,27 @@ def main() -> None:
     if not namespace:
         error_out("Cannot find Alertmanager service (alertmanager-operated).", context)
 
-    raw = run_kubectl(
-        [
-            "get",
-            "--raw",
-            f"/api/v1/namespaces/{namespace}/services/http:alertmanager-operated:9093/proxy/api/v2/alerts",
-        ]
-    )
+    raw = fetch_alerts(namespace)
     if not raw:
         refreshed = discover_namespace()
         if refreshed and refreshed != namespace:
             namespace = refreshed
-            try:
-                cache_file.write_text(namespace + "\n", encoding="utf-8")
-            except Exception:
-                pass
-            raw = run_kubectl(
-                [
-                    "get",
-                    "--raw",
-                    f"/api/v1/namespaces/{namespace}/services/http:alertmanager-operated:9093/proxy/api/v2/alerts",
-                ]
-            )
+            save_namespace(cache_file, namespace)
+            raw = fetch_alerts(namespace)
 
     if not raw:
         error_out("Cannot connect to cluster or Alertmanager API.", context, namespace)
 
-    alerts: list[dict] = []
     try:
         alerts = json.loads(raw)
-    except json.JSONDecodeError:
-        error_out("Invalid JSON returned by Alertmanager API.", context, namespace)
+        if not isinstance(alerts, list) or any(
+            not isinstance(alert, dict)
+            or any(not isinstance(alert.get(key, {}), dict) for key in ("status", "labels", "annotations"))
+            for alert in alerts
+        ):
+            raise ValueError("Expected an array of alert objects")
+    except ValueError:
+        error_out("Invalid alert data returned by Alertmanager API.", context, namespace)
 
     active = [a for a in alerts if a.get("status", {}).get("state") == "active"]
     watchdog_running = any(a.get("labels", {}).get("alertname", "") == "Watchdog" for a in active)

@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import "PromptLabels.js" as PromptLabels
 import QtQuick
 import Quickshell
@@ -15,7 +16,7 @@ ClippingRectangle {
     property int interval: 5000
     property int activeInterval: 1000
     property int rateWindowMs: 3000
-    property string command: "/home/misti/.config/quickshell/main/scripts/llama_models.py"
+    property string command: Quickshell.shellPath("scripts/llama_models.py")
     property var models: []
     property var generationSamples: ({})
     property int promptLabelIndex: 0
@@ -47,8 +48,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             const now = Date.now();
             const nextModels = Array.isArray(parsed.models) ? parsed.models : [];
             for (const model of nextModels)
@@ -242,23 +242,14 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: mouse.containsMouse
         implicitWidth: 420
         implicitHeight: detailsColumn.implicitHeight + 28
-        color: "transparent"
-        visible: root.barWindow && mouse.containsMouse && root.visible
 
         PopupSurface {
             anchors.fill: parent

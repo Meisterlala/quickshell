@@ -133,6 +133,10 @@ Scope {
         if (!restoring && entry.popup && entry.timeout > 0)
             remaining[uid] = entry.timeout;
         patch(uid, entry);
+        trim();
+        // Replacements can become transient or lose their popup under DND.
+        if (entry.transient && !entry.popup)
+            dismiss(uid);
     }
 
     function closed(uid) {
@@ -185,7 +189,7 @@ Scope {
     }
 
     function trim() {
-        const excess = entries.slice(historyLimit);
+        const excess = history.slice(historyLimit);
         for (const entry of excess)
             dismiss(entry.uid);
         const overflow = entries.filter(entry => entry.popup).slice(popupLimit);
@@ -227,13 +231,15 @@ Scope {
         try {
             const saved = Logic.parseState(raw, historyLimit);
             const seen = new Set(entries.map(entry => entry.uid));
-            setEntries(entries.concat(saved.entries.filter(entry => !seen.has(entry.uid))).slice(0, historyLimit));
+            setEntries(entries.concat(saved.entries.filter(entry => !seen.has(entry.uid))));
             if (!dndTouched) {
                 state.dnd = saved.dnd;
-                if (saved.dnd)
-                    setEntries(entries.map(entry => Object.assign({}, entry,
-                        { popup: entry.popup && entry.urgency === 2 })));
+                if (saved.dnd) {
+                    for (const entry of entries.filter(item => item.popup && item.urgency !== 2))
+                        hidePopup(entry.uid);
+                }
             }
+            trim();
         } catch (error) {
             persistenceError = "Could not read saved notification history";
             console.warn(persistenceError, error);

@@ -1,6 +1,5 @@
 import ".."
 import QtQuick
-import Quickshell
 
 Rectangle {
     id: root
@@ -72,25 +71,17 @@ Rectangle {
         onClicked: (mouse) => root.clicked(mouse.button)
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
         readonly property int maxTooltipWidth: root.barWindow ? Math.min(560, Math.max(240, root.barWindow.width - margin * 2)) : 360
         readonly property int maxTooltipHeight: root.barWindow && root.barWindow.screen ? Math.max(120, Math.round((root.barWindow.screen.height - root.barWindow.height - margin * 2) * 0.75)) : 480
 
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: Math.min(maxTooltipWidth, tooltipLabel.implicitWidth + 28)
         implicitHeight: Math.min(maxTooltipHeight, tooltipLabel.implicitHeight + 20)
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent

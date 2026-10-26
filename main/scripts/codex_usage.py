@@ -128,7 +128,7 @@ def usage_window(label, window, now):
     window = window or {}
     try:
         used = int(round(float(window.get("usedPercent", 0))))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         used = 0
 
     resets_at = window.get("resetsAt")
@@ -138,7 +138,7 @@ def usage_window(label, window, now):
             if resets_at is not None
             else None
         )
-    except (TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OverflowError, OSError):
         reset_dt = None
 
     return {

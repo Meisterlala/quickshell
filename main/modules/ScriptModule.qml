@@ -1,4 +1,5 @@
 import "../components"
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -63,7 +64,7 @@ ModulePill {
     }
 
     function applyFormat(value, moduleIcon) {
-        return format.replace(/\{\}/g, value).replace(/\{icon\}/g, moduleIcon);
+        return ModuleData.formatText(format, value, moduleIcon);
     }
 
     function runCommand(commandText, detached = false) {
@@ -85,7 +86,8 @@ ModulePill {
             currentText = textOverride;
             return ;
         }
-        refreshRunner.exec(["/usr/bin/sh", "-lc", command]);
+        if (command.length > 0)
+            refreshRunner.exec(["/usr/bin/sh", "-lc", command]);
     }
 
     function applyOutput(output) {
@@ -103,8 +105,7 @@ ModulePill {
             return ;
         }
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             const classes = classList(parsed.class);
             const rawText = String(parsed.text ?? "");
             if (rawText.length === 0 && hideEmptyText)
@@ -127,9 +128,12 @@ ModulePill {
     onClicked: (button) => {
         if (button === Qt.LeftButton)
             runCommand(onClickCommand, detachedActions);
-        else if (button === Qt.RightButton)
-            runCommand(onRightClickCommand || `qs ipc -c main call bar refreshModule ${moduleName}`, detachedActions);
-        else if (button === Qt.MiddleButton)
+        else if (button === Qt.RightButton) {
+            if (onRightClickCommand.length > 0)
+                runCommand(onRightClickCommand, detachedActions);
+            else
+                refresh();
+        } else if (button === Qt.MiddleButton)
             runCommand(onMiddleClickCommand);
 
     }

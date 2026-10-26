@@ -1,7 +1,7 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 
@@ -22,17 +22,13 @@ ClippingRectangle {
     property string errorText: ""
     readonly property string marker: "__KERNEL_DRIVER__="
     readonly property string queryCommand: "nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,driver_version,name --format=csv,noheader,nounits 2>&1; printf '\\n__KERNEL_DRIVER__='; awk '/NVRM version/ {for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+\\.[0-9]+/) {print $i; exit}}' /proc/driver/nvidia/version 2>/dev/null"
-    readonly property real memoryPercent: memoryTotal > 0 ? clampPercent(memoryUsed * 100 / memoryTotal) : 0
+    readonly property real memoryPercent: memoryTotal > 0 ? ModuleData.clampPercent(memoryUsed * 100 / memoryTotal) : 0
     readonly property bool driverMismatch: driverVersion.length > 0 && kernelDriverVersion.length > 0 && driverVersion !== kernelDriverVersion
     readonly property bool hasError: errorText.length > 0 || driverMismatch
     readonly property string state: hasError ? "error" : utilization >= 90 ? "warning" : "normal"
     readonly property string accent: hasError ? theme.red : utilization >= 90 ? theme.yellow : theme.sky
     readonly property string accentSoft: theme.alpha(String(accent), hasError ? 0.34 : 0.28)
     readonly property bool tooltipVisible: mouse.containsMouse
-
-    function clampPercent(value) {
-        return Math.max(0, Math.min(100, Number(value || 0)));
-    }
 
     function mibText(value) {
         const number = Number(value || 0);
@@ -82,7 +78,7 @@ ClippingRectangle {
             return;
         }
 
-        utilization = clampPercent(metrics[0]);
+        utilization = ModuleData.clampPercent(metrics[0]);
         memoryUsed = metrics[1];
         memoryTotal = metrics[2];
         driverVersion = String(parts[3] || "").trim();
@@ -132,23 +128,14 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 360
         implicitHeight: detailsColumn.implicitHeight + 28
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent
@@ -250,61 +237,6 @@ ClippingRectangle {
                     accent: root.memoryPercent >= 90 ? theme.yellow : theme.sky
                     fillColor: theme.alpha(root.memoryPercent >= 90 ? theme.yellow : theme.sky, 0.34)
                 }
-            }
-        }
-    }
-
-    component MetricBar: Item {
-        id: metricRoot
-
-        required property string label
-        required property real percent
-        required property string valueText
-        required property string accent
-        required property string fillColor
-
-        height: 24
-
-        ClippingRectangle {
-            anchors.fill: parent
-            radius: 5
-            color: theme.alpha(theme.crust, 0.3)
-            border.color: theme.alpha(String(metricRoot.accent), 0.22)
-            border.width: 1
-            contentUnderBorder: true
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                visible: metricRoot.percent > 0
-                width: parent.width * root.clampPercent(metricRoot.percent) / 100
-                color: metricRoot.fillColor
-            }
-        }
-
-        Row {
-            anchors.fill: parent
-            anchors.leftMargin: 7
-            anchors.rightMargin: 7
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 52
-                color: theme.text
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                text: metricRoot.label
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - 52
-                color: theme.text
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                horizontalAlignment: Text.AlignRight
-                text: metricRoot.valueText
             }
         }
     }

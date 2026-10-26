@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -13,7 +14,7 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 15000
     property string moduleName: "habits"
-    property string command: "/home/misti/.config/quickshell/main/scripts/habits_quickshell.py"
+    property string command: Quickshell.shellPath("scripts/habits_quickshell.py")
     property string text: ""
     property string state: "pending"
     property string date: ""
@@ -115,8 +116,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             text = String(parsed.text || "?/?");
             state = String(parsed.state || "pending");
             date = String(parsed.date || "");
@@ -232,24 +232,16 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: popupWindow
 
-        readonly property int margin: 8
         readonly property int maxPopupHeight: root.barWindow && root.barWindow.screen ? Math.max(260, Math.round((root.barWindow.screen.height - root.barWindow.height - margin * 2) * 0.78)) : 620
 
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.popupVisible
         implicitWidth: 700
         implicitHeight: Math.min(maxPopupHeight, popupContent.implicitHeight + 28)
-        color: "transparent"
-        visible: root.barWindow && root.popupVisible
 
         PopupSurface {
             anchors.fill: parent

@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -13,7 +14,7 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 900000
     property string moduleName: "updates"
-    property string command: "/home/misti/.config/quickshell/main/scripts/arch_updates.py"
+    property string command: Quickshell.shellPath("scripts/arch_updates.py")
     property string updateCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
     property int count: 0
     property string state: "updated"
@@ -80,8 +81,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             count = Number(parsed.count || 0);
             state = String(parsed.state || "normal");
             counts = parsed.counts || ({});
@@ -142,24 +142,16 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
         readonly property int maxTooltipHeight: root.barWindow && root.barWindow.screen ? Math.max(180, Math.round((root.barWindow.screen.height - root.barWindow.height - margin * 2) * 0.75)) : 520
 
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 720
         implicitHeight: Math.min(maxTooltipHeight, headerColumn.implicitHeight + (listFlickable.visible ? listFlickable.height + 10 : 0) + 28)
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent

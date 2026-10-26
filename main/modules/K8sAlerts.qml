@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -12,7 +13,7 @@ ClippingRectangle {
     property var ipc: null
     property bool moduleVisible: true
     property int interval: 60000
-    property string command: "/home/misti/.config/quickshell/main/scripts/k8s_alerts.py"
+    property string command: Quickshell.shellPath("scripts/k8s_alerts.py")
     property string contextName: ""
     property string alertNamespace: ""
     property bool watchdogRunning: false
@@ -77,8 +78,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             state = String(parsed.state || parsed.class || "ok");
             errorText = plainTooltip(parsed.error || "");
             contextName = String(parsed.context || "");
@@ -138,24 +138,16 @@ ClippingRectangle {
 
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
         readonly property int maxPopupHeight: root.barWindow && root.barWindow.screen ? Math.max(180, Math.round((root.barWindow.screen.height - root.barWindow.height - margin * 2) * 0.78)) : 560
 
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 440
         implicitHeight: Math.min(maxPopupHeight, popupContent.implicitHeight + 28)
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent

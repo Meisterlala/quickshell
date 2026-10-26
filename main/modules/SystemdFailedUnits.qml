@@ -18,7 +18,7 @@ ClippingRectangle {
     property string errorText: ""
     property string actionError: ""
     readonly property string queryCommand: Quickshell.shellPath("scripts/systemd_failed_units.py")
-    readonly property string restartCommand: "/home/misti/.config/quickshell/main/scripts/restart_failed_units.sh"
+    readonly property string restartCommand: Quickshell.shellPath("scripts/restart_failed_units.sh")
     readonly property int systemCount: systemUnits.length
     readonly property int userCount: userUnits.length
     readonly property int totalCount: systemCount + userCount
@@ -94,23 +94,14 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 360
         implicitHeight: Math.min(480, detailsColumn.implicitHeight + 28)
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent

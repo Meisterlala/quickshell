@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -13,7 +14,7 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 10000
     property string moduleName: "fritz-traffic"
-    property string command: "/home/misti/.config/quickshell/main/scripts/fritz_traffic.py"
+    property string command: Quickshell.shellPath("scripts/fritz_traffic.py")
     property bool dataVisible: false
     property real downMbit: 0
     property real upMbit: 0
@@ -31,12 +32,8 @@ ClippingRectangle {
     readonly property string accentSoft: theme.alpha(String(accent), state === "critical" ? 0.42 : 0.3)
     readonly property bool tooltipVisible: mouse.containsMouse && visible
 
-    function clampPercent(value) {
-        return Math.max(0, Math.min(100, Number(value || 0)));
-    }
-
     function percentText(ratio) {
-        return `${Math.round(clampPercent(ratio * 100))}%`;
+        return `${Math.round(ModuleData.clampPercent(ratio * 100))}%`;
     }
 
     function rateText(mbit) {
@@ -81,8 +78,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             dataVisible = Boolean(parsed.visible);
             state = String(parsed.state || "normal");
             errorText = String(parsed.error || "");
@@ -121,7 +117,7 @@ ClippingRectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         visible: root.errorText.length === 0
-        width: parent.width * root.clampPercent(root.maxRatio * 100) / 100
+        width: parent.width * ModuleData.clampPercent(root.maxRatio * 100) / 100
         color: root.accentSoft
     }
 
@@ -164,23 +160,14 @@ ClippingRectangle {
         }
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 360
         implicitHeight: detailsColumn.implicitHeight + 28
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent
@@ -281,7 +268,7 @@ ClippingRectangle {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 visible: barRoot.percent > 0
-                width: parent.width * root.clampPercent(barRoot.percent) / 100
+                width: parent.width * ModuleData.clampPercent(barRoot.percent) / 100
                 color: theme.alpha(String(barRoot.accent), 0.36)
             }
         }
@@ -308,7 +295,7 @@ ClippingRectangle {
                 font.family: theme.fontFamily
                 font.pixelSize: theme.tooltipFontPixelSize
                 horizontalAlignment: Text.AlignRight
-                text: `${root.rateText(barRoot.rate)} / ${Math.round(barRoot.limit)}M (${Math.round(root.clampPercent(barRoot.percent))}%)`
+                text: `${root.rateText(barRoot.rate)} / ${Math.round(barRoot.limit)}M (${Math.round(ModuleData.clampPercent(barRoot.percent))}%)`
             }
         }
     }

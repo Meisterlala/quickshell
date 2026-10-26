@@ -1,5 +1,6 @@
 import "../components"
 import ".."
+import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -12,7 +13,7 @@ ClippingRectangle {
     property var ipc: null
     property bool moduleVisible: true
     property int interval: 300000
-    property string command: "/home/misti/.config/quickshell/main/scripts/codex_usage.py"
+    property string command: Quickshell.shellPath("scripts/codex_usage.py")
     readonly property int compactHorizontalPadding: 20
     readonly property int compactHeight: 34
     readonly property int cornerRadius: 8
@@ -38,17 +39,13 @@ ClippingRectangle {
     property string state: "normal"
     property string errorText: ""
     readonly property bool hasData: errorText.length === 0
-    readonly property real primaryPercent: clampPercent(primary.usedPercent)
-    readonly property real secondaryPercent: clampPercent(secondary.usedPercent)
+    readonly property real primaryPercent: ModuleData.clampPercent(primary.usedPercent)
+    readonly property real secondaryPercent: ModuleData.clampPercent(secondary.usedPercent)
     readonly property bool hasCredits: Boolean(credits.hasCredits || credits.unlimited || (credits.balance && String(credits.balance) !== "0"))
     readonly property string accent: state === "critical" || errorText.length > 0 ? theme.red : state === "warning" ? theme.yellow : theme.sky
     readonly property string accentSoft: theme.alpha(String(accent), state === "normal" ? 0.3 : 0.42)
     readonly property bool tooltipVisible: mouse.containsMouse
     readonly property string creditsText: credits.unlimited ? "credits: unlimited" : `credits balance: ${credits.balance ?? "n/a"}`
-
-    function clampPercent(value) {
-        return Math.max(0, Math.min(100, Number(value || 0)));
-    }
 
     function plainTooltip(value) {
         return String(value ?? "").replace(/\r/g, "\n").replace(/<[^>]*>/g, "").trim();
@@ -76,8 +73,7 @@ ClippingRectangle {
         }
 
         try {
-            const lines = trimmed.split("\n").filter(line => line.trim().length > 0);
-            const parsed = JSON.parse(lines[lines.length - 1]);
+            const parsed = ModuleData.parseObject(trimmed);
             if (parsed.error) {
                 errorText = plainTooltip(parsed.error);
                 return;
@@ -155,23 +151,14 @@ ClippingRectangle {
         text: "Codex: err"
     }
 
-    PopupWindow {
+    BarPopup {
         id: tooltipWindow
 
-        readonly property int margin: 8
-
-        anchor.window: root.barWindow
-        anchor.edges: Edges.Top | Edges.Left
-        anchor.gravity: Edges.Bottom | Edges.Right
-        anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-        anchor.rect.x: root.barWindow ? Math.max(margin, Math.min(root.barWindow.width - width - margin, root.mapToItem(null, 0, 0).x + root.width / 2 - width / 2)) : 0
-        anchor.rect.y: root.barWindow ? root.barWindow.height + margin : root.height + margin
-        anchor.rect.width: root.width
-        anchor.rect.height: root.height
+        barWindow: root.barWindow
+        anchorItem: root
+        shown: root.tooltipVisible
         implicitWidth: 300
         implicitHeight: root.errorText.length > 0 ? errorPopupLabel.implicitHeight + 24 : detailsColumn.implicitHeight + 28
-        color: "transparent"
-        visible: root.barWindow && root.tooltipVisible
 
         PopupSurface {
             anchors.fill: parent
@@ -270,9 +257,9 @@ ClippingRectangle {
         UsageBar {
             width: parent.width
             label: String(detailRoot.usage.label || "")
-                    percent: detailRoot.percent
-                    available: Boolean(detailRoot.usage.available)
-                    accent: detailRoot.accent
+            percent: detailRoot.percent
+            available: Boolean(detailRoot.usage.available)
+            accent: detailRoot.accent
             fillColor: detailRoot.fillColor
         }
 
