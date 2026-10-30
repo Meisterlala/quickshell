@@ -42,7 +42,12 @@ Rectangle {
             return "";
 
         const app = appClass(toplevel);
-        return app ? Quickshell.iconPath(app, true) : "";
+        if (!app)
+            return "";
+
+        const entry = DesktopEntries.heuristicLookup(app);
+        const icon = entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : "";
+        return icon || Quickshell.iconPath(app, true);
     }
 
     width: Math.max(minimumWidth, icons.implicitWidth + horizontalPadding)

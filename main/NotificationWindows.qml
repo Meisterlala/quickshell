@@ -75,7 +75,9 @@ Scope {
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notifications"
                 WlrLayershell.layer: WlrLayer.Overlay
-                WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+                // Toasts must never interrupt typing, even on hover/click.
+                // Keyboard interaction belongs in the explicitly opened center.
+                WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
                 mask: Region { item: toastColumn }
 
                 Column {

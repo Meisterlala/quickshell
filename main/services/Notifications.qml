@@ -16,7 +16,8 @@ Scope {
     readonly property var entries: JSON.parse(state.entriesJson)
     readonly property alias doNotDisturb: state.dnd
     readonly property var history: entries.filter(entry => !entry.transient)
-    readonly property var popups: entries.filter(entry => entry.popup).slice(0, popupLimit)
+    readonly property var popups: doNotDisturb || centerOpen ? []
+        : entries.filter(entry => entry.popup).slice(0, popupLimit)
     readonly property int unreadCount: history.filter(entry => entry.unread).length
     readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/quickshell"
     property bool directoryReady: false
@@ -110,7 +111,7 @@ Scope {
         }
         const entry = Logic.snapshot(notification, uid, state.session, Date.now());
         entry.unread = !centerOpen;
-        entry.popup = !centerOpen && (!doNotDisturb || entry.urgency === 2);
+        entry.popup = !centerOpen && !doNotDisturb;
         entry.screen = focusedScreen;
         if (entry.popup && entry.timeout > 0)
             remaining[uid] = entry.timeout;
@@ -128,7 +129,7 @@ Scope {
             return;
         const entry = Logic.snapshot(notification, uid, state.session, previous.timestamp);
         entry.unread = restoring ? previous.unread : !centerOpen;
-        entry.popup = restoring ? previous.popup : !centerOpen && (!doNotDisturb || entry.urgency === 2);
+        entry.popup = !centerOpen && !doNotDisturb && (!restoring || previous.popup);
         entry.screen = previous.screen;
         if (!restoring && entry.popup && entry.timeout > 0)
             remaining[uid] = entry.timeout;
@@ -184,7 +185,8 @@ Scope {
     }
 
     function dismissPopups() {
-        for (const entry of popups.slice())
+        // Include all marked popups even when DND already hides the model.
+        for (const entry of entries.filter(item => item.popup))
             hidePopup(entry.uid);
     }
 
@@ -234,10 +236,8 @@ Scope {
             setEntries(entries.concat(saved.entries.filter(entry => !seen.has(entry.uid))));
             if (!dndTouched) {
                 state.dnd = saved.dnd;
-                if (saved.dnd) {
-                    for (const entry of entries.filter(item => item.popup && item.urgency !== 2))
-                        hidePopup(entry.uid);
-                }
+                if (saved.dnd)
+                    dismissPopups();
             }
             trim();
         } catch (error) {

@@ -147,10 +147,15 @@ PopupSurface {
                 }
             }
         }
+        NotificationButton {
+            visible: root.compact && root.entry.live && root.entry.inlineReply
+            text: "Reply…"
+            onClicked: root.service.toggleCenter(root.entry.screen)
+        }
         Rectangle {
             width: parent.width
             height: 34
-            visible: root.entry.live && root.entry.inlineReply
+            visible: !root.compact && root.entry.live && root.entry.inlineReply
             color: theme.surface0
             radius: 8
             TextInput {
