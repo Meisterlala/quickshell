@@ -16,6 +16,7 @@ Rectangle {
     property int iconSpacing: 3
     readonly property list<var> windows: Hyprland.toplevels.values.filter(toplevel => workspace && toplevel.workspace && toplevel.workspace.id === workspace.id)
     readonly property bool occupied: windows.length > 0
+    readonly property var desktopEntries: DesktopEntries.applications.values
 
     signal clicked(int button)
 
@@ -45,7 +46,14 @@ Rectangle {
         if (!app)
             return "";
 
-        const entry = DesktopEntries.heuristicLookup(app);
+        // The built-in lookup does not match short window IDs to reverse-DNS
+        // desktop IDs. Also match desktop metadata, reacting when entries load.
+        const entries = root.desktopEntries;
+        const key = app.toLowerCase().replace(/\.desktop$/, "");
+        const entry = DesktopEntries.heuristicLookup(app)
+            || entries.find(candidate => candidate.startupClass.toLowerCase() === key)
+            || entries.find(candidate => candidate.name.toLowerCase() === key)
+            || entries.find(candidate => candidate.id.toLowerCase().endsWith("." + key));
         const icon = entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : "";
         return icon || Quickshell.iconPath(app, true);
     }
