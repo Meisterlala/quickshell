@@ -114,19 +114,42 @@ PopupSurface {
         width: parent.width - 28
         spacing: 8
 
-        Text {
-            text: Qt.formatDateTime(root.today, "dddd, dd.MM.yyyy")
-            color: theme.text
-            font.family: theme.fontFamily
-            font.pixelSize: 14
-        }
+        Row {
+            width: parent.width
+            spacing: 12
 
-        Text {
-            text: Qt.formatDateTime(root.today, "hh:mm")
-            color: theme.rosewater
-            font.family: theme.fontFamily
-            font.pixelSize: 32
-            font.bold: true
+            Column {
+                id: dateAndTime
+                width: Math.max(headerTime.width, dateLabel.implicitWidth)
+                spacing: 8
+
+                Text {
+                    id: dateLabel
+                    text: Qt.formatDateTime(root.today, "dddd, dd.MM.yyyy")
+                    color: theme.text
+                    font.family: theme.fontFamily
+                    font.pixelSize: 12
+                }
+
+                Text {
+                    id: headerTime
+                    width: 154
+                    height: 54
+                    text: Qt.formatDateTime(root.today, "hh:mm")
+                    color: theme.rosewater
+                    font.family: theme.fontFamily
+                    font.pixelSize: 48
+                    font.bold: true
+                    fontSizeMode: Text.Fit
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
+            SunMoon {
+                width: parent.width - dateAndTime.width - parent.spacing
+                height: dateAndTime.height
+                today: root.today
+            }
         }
 
         Rectangle {
