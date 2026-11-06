@@ -20,5 +20,7 @@ PopupWindow {
     anchor.rect.width: anchorItem.width
     anchor.rect.height: anchorItem.height
     color: "transparent"
+    // Popups must not grab the keyboard away from the active application.
+    grabFocus: false
     visible: barWindow !== null && anchorItem.visible && shown
 }

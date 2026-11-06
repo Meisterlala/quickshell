@@ -112,25 +112,14 @@ Scope {
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notification-center"
                 WlrLayershell.layer: WlrLayer.Overlay
-                // Normal focus only: never grab the seat or swallow clicks on
-                // other windows. The compositor delivers those clicks directly.
+                // Opening the center must not take focus from the current app.
+                // OnDemand still permits explicitly clicking an inline reply.
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
-                onVisibleChanged: {
-                    if (!visible)
-                        centerFocus.hadFocus = false;
-                }
 
                 Item {
-                    id: centerFocus
                     anchors.fill: parent
-                    property bool hadFocus: false
-                    Window.onActiveChanged: {
-                        if (Window.active)
-                            hadFocus = true;
-                        else if (hadFocus && centerWindow.visible)
-                            root.service.centerOpen = false;
-                    }
-                    focus: true
+                    // Stay open until the bell (or IPC toggle) is used again,
+                    // including when the pointer/focus moves to another app.
                     Keys.onEscapePressed: root.service.centerOpen = false
                     Loader {
                         id: centerLoader

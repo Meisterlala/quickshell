@@ -117,6 +117,7 @@ Rectangle {
                     implicitWidth: Math.min(maxTooltipWidth, tooltipLabel.implicitWidth + 28)
                     implicitHeight: tooltipLabel.implicitHeight + 20
                     color: "transparent"
+                    grabFocus: false
                     visible: root.barWindow && !trayItem.ignored && !trayItem.menuOpen && iconMouse.containsMouse && trayItem.tooltipText.length > 0
 
                     PopupSurface {
@@ -161,7 +162,7 @@ Rectangle {
                     implicitHeight: menuContent.implicitHeight + outerMargin * 2
                     color: "transparent"
                     visible: !trayItem.ignored && trayItem.menuOpen
-                    grabFocus: true
+                    grabFocus: false
                     onVisibleChanged: {
                         if (!visible)
                             trayItem.menuOpen = false;
