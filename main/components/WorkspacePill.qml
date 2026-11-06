@@ -1,5 +1,6 @@
 import ".."
 import "../services"
+import "../services/WorkspaceWindowOrder.js" as WindowOrder
 import QtQuick
 import QtQuick.Effects
 import Quickshell
@@ -14,11 +15,28 @@ Rectangle {
     property int minimumWidth: 54
     property int iconSize: 18
     property int iconSpacing: 3
-    readonly property list<var> windows: Hyprland.toplevels.values.filter(toplevel => workspace && toplevel.workspace && toplevel.workspace.id === workspace.id)
+    readonly property list<var> spatialWindows: WindowOrder.spatialOrder(Hyprland.toplevels.values.filter(toplevel => workspace && toplevel.workspace && toplevel.workspace.id === workspace.id))
+    property list<var> windows: []
+
+    // Geometry/title refreshes should not rebuild icon delegates unless the
+    // membership or spatial order actually changed.
+    onSpatialWindowsChanged: syncWindowOrder()
+
+    function syncWindowOrder() {
+        if (windows.length !== spatialWindows.length
+                || spatialWindows.some((window, index) => window !== windows[index]))
+            windows = spatialWindows;
+    }
     readonly property bool occupied: windows.length > 0
     readonly property var desktopEntries: DesktopEntries.applications.values
 
     signal clicked(int button)
+
+    Component.onCompleted: {
+        syncWindowOrder();
+        WorkspaceWindowOrder.registerPill(root);
+    }
+    Component.onDestruction: WorkspaceWindowOrder.unregisterPill(root)
 
     function appClass(toplevel) {
         if (!toplevel)
