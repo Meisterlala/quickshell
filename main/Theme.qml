@@ -45,5 +45,4 @@ QtObject {
 
         return text;
     }
-
 }

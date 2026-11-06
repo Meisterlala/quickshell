@@ -1,5 +1,7 @@
-import "./components"
+pragma ComponentBehavior: Bound
+
 import "./modules"
+import "./services"
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -94,21 +96,21 @@ Scope {
 
                 FritzTraffic {
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isPrimary(bar.screen)
                     ipc: root.ipc
                     interval: 10000
                 }
 
                 SystemdFailedUnits {
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isPrimary(bar.screen)
                     ipc: root.ipc
                     interval: 10000
                 }
 
                 Updates {
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isPrimary(bar.screen)
                     ipc: root.ipc
                     interval: 900000
                 }
@@ -116,12 +118,12 @@ Scope {
                 CodexUsage {
                     ipc: root.ipc
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isPrimary(bar.screen)
                 }
 
                 Habits {
                     barWindow: bar
-                    moduleVisible: root.isPrimary(bar.screen) && !root.alternativeMode
+                    moduleVisible: HelperBuild.ready && root.isPrimary(bar.screen) && !root.alternativeMode
                     ipc: root.ipc
                     interval: 15000
                     onAlternativeModeRequested: root.alternativeMode = true
@@ -133,20 +135,16 @@ Scope {
                     moduleVisible: root.isPrimary(bar.screen)
                 }
 
-                ScriptModule {
+                IdleInhibitors {
                     barWindow: bar
-                    moduleVisible: root.isSecondary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isSecondary(bar.screen)
                     ipc: root.ipc
-                    moduleName: "hypridle"
-                    command: "/home/misti/.config/waybar/idle_inhibit.py"
-                    interval: 5000
-                    format: "{} 󰒲"
                 }
 
                 LlamaModels {
                     ipc: root.ipc
                     barWindow: bar
-                    moduleVisible: root.isSecondary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isSecondary(bar.screen)
                 }
 
                 Gpu {
@@ -174,7 +172,7 @@ Scope {
                 K8sAlerts {
                     ipc: root.ipc
                     barWindow: bar
-                    moduleVisible: root.isSecondary(bar.screen)
+                    moduleVisible: HelperBuild.ready && root.isSecondary(bar.screen)
                 }
 
                 ScriptModule {
@@ -224,7 +222,7 @@ Scope {
 
                 Clock {
                     ipc: root.ipc
-                    popupIpcEnabled: Hyprland.focusedMonitor !== null && bar.screen !== null && Hyprland.focusedMonitor.name === bar.screen.name
+                    popupIpcEnabled: Hyprland.focusedMonitor !== null && bar.screen !== null && Hyprland.focusedMonitor.name === bar.modelData.name
                     barWindow: bar
                     alternativeMode: root.alternativeMode
                     onAlternativeModeToggled: root.alternativeMode = !root.alternativeMode

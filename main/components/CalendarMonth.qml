@@ -1,5 +1,7 @@
 // Month grid adapted from Linuxury/nebula-shell (MIT).
 // Source and full license: ../licenses/nebula-shell-MIT.txt
+pragma ComponentBehavior: Bound
+
 import ".."
 import QtQuick
 
@@ -37,7 +39,9 @@ Column {
 
     spacing: 6
 
-    Theme { id: theme }
+    Theme {
+        id: theme
+    }
 
     Row {
         width: parent.width

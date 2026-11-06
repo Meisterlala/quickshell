@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
@@ -16,7 +18,6 @@ ClippingRectangle {
     property int interval: 5000
     property int activeInterval: 1000
     property int rateWindowMs: 3000
-    property string command: Quickshell.shellPath("scripts/llama_models.py")
     property var models: []
     property var generationSamples: ({})
     property int promptLabelIndex: 0
@@ -33,7 +34,7 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function applyOutput(output) {
@@ -90,12 +91,20 @@ ClippingRectangle {
         const generationId = model.generationId.length > 0 ? model.generationId : "pending";
         let state = generationSamples[model.id];
         if (!state) {
-            state = { generationId: generationId, samples: [], phase: "prompt" };
+            state = {
+                generationId: generationId,
+                samples: [],
+                phase: "prompt"
+            };
         } else if (state.generationId === "pending" && generationId !== "pending") {
             state.generationId = generationId;
             state.samples = [];
         } else if (state.generationId !== generationId) {
-            state = { generationId: generationId, samples: [], phase: "prompt" };
+            state = {
+                generationId: generationId,
+                samples: [],
+                phase: "prompt"
+            };
         }
 
         const sample = {
@@ -362,7 +371,6 @@ ClippingRectangle {
                                     font.pixelSize: theme.tooltipFontPixelSize - 1
                                     text: root.modelSpec(modelRow.modelData)
                                 }
-
                             }
                         }
                     }
@@ -382,12 +390,10 @@ ClippingRectangle {
         }
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "llama-models"
+        onOutput: text => root.applyOutput(text)
     }
 
     Connections {
@@ -403,7 +409,7 @@ ClippingRectangle {
         if (moduleVisible)
             refresh();
         else {
-            refreshRunner.running = false;
+            refreshRunner.cancel();
             models = [];
             generationSamples = ({});
             activePromptLabel = "";

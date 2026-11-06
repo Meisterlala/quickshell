@@ -23,7 +23,9 @@ Item {
 
     height: 24
 
-    Theme { id: theme }
+    Theme {
+        id: theme
+    }
 
     ClippingRectangle {
         anchors.fill: parent

@@ -1,8 +1,8 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import QtQuick
-import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 
 ClippingRectangle {
@@ -17,8 +17,6 @@ ClippingRectangle {
     property var userUnits: []
     property string errorText: ""
     property string actionError: ""
-    readonly property string queryCommand: Quickshell.shellPath("scripts/systemd_failed_units.py")
-    readonly property string restartCommand: Quickshell.shellPath("scripts/restart_failed_units.sh")
     readonly property int systemCount: systemUnits.length
     readonly property int userCount: userUnits.length
     readonly property int totalCount: systemCount + userCount
@@ -28,23 +26,20 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", queryCommand]);
+        refreshRunner.run();
     }
 
     function runRestart() {
         if (actionRunner.running)
             return;
         actionError = "";
-        actionRunner.exec([restartCommand]);
+        actionRunner.run(["restart"]);
     }
 
     function applyOutput(output) {
         try {
             const data = JSON.parse(output);
-            if (!data || typeof data.error !== "string"
-                    || !(data.systemUnits === null || Array.isArray(data.systemUnits))
-                    || !(data.userUnits === null || Array.isArray(data.userUnits))
-                    || ((data.systemUnits === null || data.userUnits === null) && !data.error))
+            if (!data || typeof data.error !== "string" || !(data.systemUnits === null || Array.isArray(data.systemUnits)) || !(data.userUnits === null || Array.isArray(data.userUnits)) || ((data.systemUnits === null || data.userUnits === null) && !data.error))
                 throw new Error("Invalid service response");
             if (Array.isArray(data.systemUnits))
                 systemUnits = data.systemUnits;
@@ -89,7 +84,7 @@ ClippingRectangle {
             color: theme.red
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
-            text: totalCount > 0 ? String(totalCount) : "err"
+            text: root.totalCount > 0 ? String(root.totalCount) : "err"
             textFormat: Text.PlainText
         }
     }
@@ -225,17 +220,15 @@ ClippingRectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         hoverEnabled: true
         z: 10
-        onClicked: (event) => {
+        onClicked: event => {
             if (event.button === Qt.LeftButton)
                 root.runRestart();
             else if (event.button === Qt.RightButton)
                 root.refresh();
-
         }
         onContainsMouseChanged: {
             if (containsMouse)
                 root.refresh();
-
         }
     }
 
@@ -246,20 +239,17 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "systemd-failed-units"
+        onOutput: text => root.applyOutput(text)
     }
 
-    Process {
+    HelperProcess {
         id: actionRunner
-        stdout: StdioCollector {}
-        stderr: StdioCollector { id: restartErrors }
-        onExited: (exitCode, exitStatus) => {
-            root.actionError = exitCode === 0 ? "" : restartErrors.text.trim() || "Service restart failed";
+        helper: "systemd-failed-units"
+        onExited: exitCode => {
+            root.actionError = exitCode === 0 ? "" : actionRunner.errorText.trim() || "Service restart failed";
             root.refresh();
         }
     }

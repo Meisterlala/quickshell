@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import ".."
 import QtQuick
 
@@ -7,6 +9,7 @@ Rectangle {
     property alias text: label.text
     property string moduleClass: ""
     property string tooltipText: ""
+    property var tooltipEntries: []
     property var barWindow: null
     property bool hoverable: true
     property bool backgroundVisible: true
@@ -68,7 +71,7 @@ Rectangle {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
-        onClicked: (mouse) => root.clicked(mouse.button)
+        onClicked: mouse => root.clicked(mouse.button)
     }
 
     BarPopup {
@@ -80,8 +83,11 @@ Rectangle {
         barWindow: root.barWindow
         anchorItem: root
         shown: root.tooltipVisible
-        implicitWidth: Math.min(maxTooltipWidth, tooltipLabel.implicitWidth + 28)
-        implicitHeight: Math.min(maxTooltipHeight, tooltipLabel.implicitHeight + 20)
+        readonly property bool structured: root.tooltipEntries.length > 0
+        readonly property int padding: structured ? 16 : 10
+
+        implicitWidth: Math.min(maxTooltipWidth, structured ? 380 : tooltipLabel.implicitWidth + 28)
+        implicitHeight: Math.min(maxTooltipHeight, tooltipContent.implicitHeight + padding * 2)
 
         PopupSurface {
             anchors.fill: parent
@@ -89,26 +95,65 @@ Rectangle {
 
             Flickable {
                 anchors.fill: parent
-                anchors.margins: 10
+                anchors.margins: tooltipWindow.padding
                 contentWidth: width
-                contentHeight: tooltipLabel.implicitHeight
+                contentHeight: tooltipContent.implicitHeight
                 clip: true
 
-                Text {
-                    id: tooltipLabel
+                Column {
+                    id: tooltipContent
 
-                    text: root.tooltipText
-                    color: theme.text
-                    font.family: theme.fontFamily
-                    font.pixelSize: theme.tooltipFontPixelSize
-                    textFormat: Text.PlainText
-                    wrapMode: Text.Wrap
                     width: parent.width
+                    spacing: 14
+
+                    Text {
+                        id: tooltipLabel
+
+                        visible: !tooltipWindow.structured
+                        text: root.tooltipText
+                        color: theme.text
+                        font.family: theme.fontFamily
+                        font.pixelSize: theme.tooltipFontPixelSize
+                        textFormat: Text.PlainText
+                        wrapMode: Text.Wrap
+                        width: parent.width
+                    }
+
+                    Repeater {
+                        model: root.tooltipEntries
+
+                        Column {
+                            required property var modelData
+
+                            width: tooltipContent.width
+                            spacing: 5
+
+                            Text {
+                                width: parent.width
+                                text: parent.modelData.title
+                                color: theme.text
+                                font.family: theme.fontFamily
+                                font.pixelSize: theme.tooltipFontPixelSize
+                                font.bold: true
+                                textFormat: Text.PlainText
+                                wrapMode: Text.Wrap
+                            }
+
+                            Text {
+                                width: parent.width
+                                visible: text.length > 0
+                                text: parent.modelData.body
+                                color: theme.subtext0
+                                font.family: theme.fontFamily
+                                font.pixelSize: theme.tooltipFontPixelSize
+                                lineHeight: 1.25
+                                textFormat: Text.PlainText
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                    }
                 }
             }
-
         }
-
     }
-
 }

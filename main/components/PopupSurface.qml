@@ -12,5 +12,4 @@ Rectangle {
     Theme {
         id: theme
     }
-
 }

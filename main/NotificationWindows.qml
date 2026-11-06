@@ -12,8 +12,7 @@ Scope {
     required property var service
     readonly property string fallbackScreen: Quickshell.screens.length ? Quickshell.screens[0].name : ""
     readonly property string focusedScreen: Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : fallbackScreen
-    readonly property string centerScreen: Quickshell.screens.some(screen => screen.name === service.centerScreen)
-        ? service.centerScreen : fallbackScreen
+    readonly property string centerScreen: Quickshell.screens.some(screen => screen.name === service.centerScreen) ? service.centerScreen : fallbackScreen
     Binding {
         target: root.service
         property: "focusedScreen"
@@ -26,8 +25,7 @@ Scope {
             id: output
             required property var modelData
             readonly property string screenName: modelData.name
-            readonly property var popups: root.service.popups.filter(entry => entry.screen === screenName
-                || (!Quickshell.screens.some(screen => screen.name === entry.screen) && screenName === root.fallbackScreen))
+            readonly property var popups: root.service.popups.filter(entry => entry.screen === screenName || (!Quickshell.screens.some(screen => screen.name === entry.screen) && screenName === root.fallbackScreen))
 
             // Keep each card alive when another notification arrives or changes.
             // Replacing a JS-array model recreates hovered/dragged delegates.
@@ -46,7 +44,10 @@ Scope {
                         ++existing;
                     const json = JSON.stringify(entry);
                     if (existing === popupCards.count) {
-                        popupCards.insert(i, { uid: entry.uid, json: json });
+                        popupCards.insert(i, {
+                            uid: entry.uid,
+                            json: json
+                        });
                     } else {
                         if (existing !== i)
                             popupCards.move(existing, i, 1);
@@ -70,8 +71,14 @@ Scope {
                 // mask. Never make a protected notification surface full-screen.
                 implicitWidth: Math.min(420, output.modelData.width - 32)
                 implicitHeight: Math.max(1, toastColumn.implicitHeight)
-                anchors { top: true; right: true }
-                margins { top: 54; right: 16 }
+                anchors {
+                    top: true
+                    right: true
+                }
+                margins {
+                    top: 54
+                    right: 16
+                }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notifications"
                 // Only cover fullscreen apps when explicitly enabled.
@@ -79,7 +86,9 @@ Scope {
                 // Toasts must never interrupt typing, even on hover/click.
                 // Keyboard interaction belongs in the explicitly opened center.
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-                mask: Region { item: toastColumn }
+                mask: Region {
+                    item: toastColumn
+                }
 
                 Column {
                     id: toastColumn
@@ -102,14 +111,20 @@ Scope {
 
             PanelWindow {
                 id: centerWindow
+                readonly property NotificationCenter centerContent: centerLoader.item as NotificationCenter
                 screen: output.modelData
                 visible: root.service.centerOpen && output.screenName === root.centerScreen
                 color: "transparent"
                 implicitWidth: Math.min(540, output.modelData.width - 32)
-                implicitHeight: Math.max(1, Math.min(centerLoader.item ? centerLoader.item.implicitHeight : 1,
-                    output.modelData.height - 70))
-                anchors { top: true; right: true }
-                margins { top: 54; right: 16 }
+                implicitHeight: Math.max(1, Math.min(centerContent ? centerContent.implicitHeight : 1, output.modelData.height - 70))
+                anchors {
+                    top: true
+                    right: true
+                }
+                margins {
+                    top: 54
+                    right: 16
+                }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notification-center"
                 // Apply the same preference to the notification center.

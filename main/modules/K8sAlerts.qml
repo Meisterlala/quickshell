@@ -1,9 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 
 ClippingRectangle {
@@ -13,21 +14,27 @@ ClippingRectangle {
     property var ipc: null
     property bool moduleVisible: true
     property int interval: 60000
-    property string command: Quickshell.shellPath("scripts/k8s_alerts.py")
     property string contextName: ""
     property string alertNamespace: ""
     property bool watchdogRunning: false
-    property var counts: ({"total": 0, "critical": 0, "error": 0, "warning": 0, "info": 0, "unknown": 0})
+    property var counts: ({
+            "total": 0,
+            "critical": 0,
+            "error": 0,
+            "warning": 0,
+            "info": 0,
+            "unknown": 0
+        })
     property var alerts: []
-    property string state: "ok"
+    property string moduleState: "ok"
     property string errorText: ""
     property bool popupPinned: false
     property real lastInteractiveRefresh: 0
     readonly property int interactiveRefreshCooldown: 5000
-    readonly property bool hasProblem: state !== "ok" || errorText.length > 0 || !watchdogRunning
+    readonly property bool hasProblem: moduleState !== "ok" || errorText.length > 0 || !watchdogRunning
     readonly property bool tooltipVisible: (mouse.containsMouse || popupPinned) && visible
-    readonly property string accent: state === "critical" || state === "error" || errorText.length > 0 ? theme.red : state === "warning" ? theme.yellow : theme.green
-    readonly property string accentSoft: theme.alpha(String(accent), state === "critical" ? 0.42 : 0.32)
+    readonly property string accent: moduleState === "critical" || moduleState === "error" || errorText.length > 0 ? theme.red : moduleState === "warning" ? theme.yellow : theme.green
+    readonly property string accentSoft: theme.alpha(String(accent), moduleState === "critical" ? 0.42 : 0.32)
 
     function plainTooltip(value) {
         return String(value ?? "").replace(/\r/g, "\n").replace(/<[^>]*>/g, "").trim();
@@ -37,7 +44,7 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function refreshInteractive() {
@@ -73,13 +80,13 @@ ClippingRectangle {
         const trimmed = output.trim();
         if (trimmed.length === 0) {
             errorText = "No Alertmanager output";
-            state = "error";
+            moduleState = "error";
             return;
         }
 
         try {
             const parsed = ModuleData.parseObject(trimmed);
-            state = String(parsed.state || parsed.class || "ok");
+            moduleState = String(parsed.state || parsed.class || "ok");
             errorText = plainTooltip(parsed.error || "");
             contextName = String(parsed.context || "");
             alertNamespace = String(parsed.namespace || "");
@@ -88,7 +95,7 @@ ClippingRectangle {
             alerts = parsed.alerts || [];
         } catch (error) {
             errorText = plainTooltip(trimmed);
-            state = "error";
+            moduleState = "error";
         }
     }
 
@@ -125,7 +132,7 @@ ClippingRectangle {
             color: root.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
-            text: root.state === "critical" || root.state === "error" || root.errorText.length > 0 ? "" : ""
+            text: root.moduleState === "critical" || root.moduleState === "error" || root.errorText.length > 0 ? "" : ""
         }
 
         Text {
@@ -135,7 +142,6 @@ ClippingRectangle {
             font.pixelSize: theme.barFontPixelSize
             text: Number(root.counts.total || 0) > 0 ? String(root.counts.total) : "AM"
         }
-
     }
 
     BarPopup {
@@ -168,7 +174,7 @@ ClippingRectangle {
                         color: root.accent
                         font.family: theme.fontFamily
                         font.pixelSize: theme.barFontPixelSize + 4
-                        text: root.state === "critical" || root.state === "error" || root.errorText.length > 0 ? "" : ""
+                        text: root.moduleState === "critical" || root.moduleState === "error" || root.errorText.length > 0 ? "" : ""
                     }
 
                     Column {
@@ -428,7 +434,7 @@ ClippingRectangle {
 
         required property string label
         required property string colorValue
-        signal pressed()
+        signal pressed
 
         implicitWidth: buttonText.implicitWidth + 18
         implicitHeight: 26
@@ -467,7 +473,7 @@ ClippingRectangle {
             if (containsMouse)
                 root.refreshInteractive();
         }
-        onClicked: (event) => {
+        onClicked: event => {
             if (event.button === Qt.LeftButton) {
                 root.popupPinned = !root.popupPinned;
                 if (root.popupPinned)
@@ -485,12 +491,10 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "k8s-alerts"
+        onOutput: text => root.applyOutput(text)
     }
 
     Connections {

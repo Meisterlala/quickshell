@@ -80,11 +80,11 @@ ModulePill {
 
     function refresh() {
         if (!moduleVisible || refreshRunner.running)
-            return ;
+            return;
 
         if (textOverride.length > 0) {
             currentText = textOverride;
-            return ;
+            return;
         }
         if (command.length > 0)
             refreshRunner.exec(["/usr/bin/sh", "-lc", command]);
@@ -96,13 +96,13 @@ ModulePill {
             currentText = "";
             currentTooltip = "";
             currentClass = "";
-            return ;
+            return;
         }
         if (!parseJson) {
             currentText = applyFormat(trimmed, icon);
             currentTooltip = "";
             currentClass = "";
-            return ;
+            return;
         }
         try {
             const parsed = ModuleData.parseObject(trimmed);
@@ -125,7 +125,7 @@ ModulePill {
     tooltipText: currentTooltip
     moduleClass: currentClass
     visible: moduleVisible && (!hideEmptyText || currentText.length > 0)
-    onClicked: (button) => {
+    onClicked: button => {
         if (button === Qt.LeftButton)
             runCommand(onClickCommand, detachedActions);
         else if (button === Qt.RightButton) {
@@ -135,7 +135,6 @@ ModulePill {
                 refresh();
         } else if (button === Qt.MiddleButton)
             runCommand(onMiddleClickCommand);
-
     }
     Component.onCompleted: refresh()
     onModuleVisibleChanged: {
@@ -143,7 +142,6 @@ ModulePill {
             refresh();
         else if (hideEmptyText)
             currentText = "";
-
     }
 
     Timer {
@@ -159,7 +157,6 @@ ModulePill {
         stdout: StdioCollector {
             onStreamFinished: root.applyOutput(this.text)
         }
-
     }
 
     Process {
@@ -171,10 +168,8 @@ ModulePill {
         function onRefreshRequested(name) {
             if (name === root.moduleName || name === "all")
                 root.refresh();
-
         }
 
         target: root.ipc
     }
-
 }

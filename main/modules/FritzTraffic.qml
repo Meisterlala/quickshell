@@ -1,8 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import Quickshell.Widgets
 
@@ -14,7 +15,6 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 10000
     property string moduleName: "fritz-traffic"
-    property string command: Quickshell.shellPath("scripts/fritz_traffic.py")
     property bool dataVisible: false
     property real downMbit: 0
     property real upMbit: 0
@@ -26,10 +26,10 @@ ClippingRectangle {
     property real warnAt: 0.75
     property real criticalAt: 0.9
     property real hideAt: 0.65
-    property string state: "normal"
+    property string moduleState: "normal"
     property string errorText: ""
-    readonly property string accent: errorText.length > 0 || state === "critical" ? theme.red : state === "warning" ? theme.yellow : theme.sky
-    readonly property string accentSoft: theme.alpha(String(accent), state === "critical" ? 0.42 : 0.3)
+    readonly property string accent: errorText.length > 0 || moduleState === "critical" ? theme.red : moduleState === "warning" ? theme.yellow : theme.sky
+    readonly property string accentSoft: theme.alpha(String(accent), moduleState === "critical" ? 0.42 : 0.3)
     readonly property bool tooltipVisible: mouse.containsMouse && visible
 
     function percentText(ratio) {
@@ -61,7 +61,7 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function openFritzBox() {
@@ -73,14 +73,14 @@ ClippingRectangle {
         if (trimmed.length === 0) {
             errorText = "No FRITZ!Box traffic output";
             dataVisible = true;
-            state = "error";
+            moduleState = "error";
             return;
         }
 
         try {
             const parsed = ModuleData.parseObject(trimmed);
             dataVisible = Boolean(parsed.visible);
-            state = String(parsed.state || "normal");
+            moduleState = String(parsed.state || "normal");
             errorText = String(parsed.error || "");
             downMbit = Number(parsed.downMbit || 0);
             upMbit = Number(parsed.upMbit || 0);
@@ -95,7 +95,7 @@ ClippingRectangle {
         } catch (error) {
             errorText = trimmed;
             dataVisible = true;
-            state = "error";
+            moduleState = "error";
         }
     }
 
@@ -152,7 +152,7 @@ ClippingRectangle {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
-        onClicked: (mouse) => {
+        onClicked: mouse => {
             if (mouse.button === Qt.LeftButton)
                 root.openFritzBox();
             else
@@ -322,12 +322,10 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "fritz-traffic"
+        onOutput: text => root.applyOutput(text)
     }
 
     Process {

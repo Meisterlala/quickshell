@@ -14,8 +14,7 @@ PopupWindow {
     anchor.edges: Edges.Top | Edges.Left
     anchor.gravity: Edges.Bottom | Edges.Right
     anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.ResizeY
-    anchor.rect.x: barWindow ? Math.max(margin, Math.min(barWindow.width - width - margin,
-        anchorItem.mapToItem(null, 0, 0).x + anchorItem.width / 2 - width / 2)) : 0
+    anchor.rect.x: barWindow ? Math.max(margin, Math.min(barWindow.width - width - margin, anchorItem.mapToItem(null, 0, 0).x + anchorItem.width / 2 - width / 2)) : 0
     anchor.rect.y: barWindow ? barWindow.height + margin : anchorItem.height + margin
     anchor.rect.width: anchorItem.width
     anchor.rect.height: anchorItem.height

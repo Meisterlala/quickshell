@@ -1,9 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import ".."
 import "../components"
+import "../services"
 import "../components/CalendarDates.js" as CalendarDates
 import QtQuick
-import Quickshell
-import Quickshell.Io
 
 PopupSurface {
     id: root
@@ -32,7 +33,7 @@ PopupSurface {
     implicitHeight: content.implicitHeight + 28
 
     function refresh() {
-        if (!ready)
+        if (!ready || !HelperBuild.ready)
             return;
         if (reader.running) {
             refreshPending = true;
@@ -41,10 +42,10 @@ PopupSurface {
         refreshPending = false;
         requestedMonth = month.monthKey;
         requestedDay = selectedDay;
-        const command = ["/usr/bin/python3", Quickshell.shellPath("scripts/thunderbird_calendar.py"), "--month", requestedMonth];
+        const args = ["--month", requestedMonth];
         if (requestedDay)
-            command.push("--day", requestedDay);
-        reader.exec(command);
+            args.push("--day", requestedDay);
+        reader.run(args);
     }
 
     function applyOutput(output) {
@@ -79,11 +80,21 @@ PopupSurface {
         refresh();
     }
 
-    Theme { id: theme }
+    Connections {
+        target: HelperBuild
+        function onReadyChanged() {
+            if (HelperBuild.ready)
+                root.refresh();
+        }
+    }
+
+    Theme {
+        id: theme
+    }
 
     Timer {
         interval: 60000
-        running: root.visible
+        running: root.visible && HelperBuild.ready
         repeat: true
         onTriggered: root.refresh()
     }
@@ -94,14 +105,13 @@ PopupSurface {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: reader
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0)
-                root.errorText = "Calendar reader failed (requires python-dateutil)";
+        helper: "calendar"
+        onOutput: text => root.applyOutput(text)
+        onExited: exitCode => {
+            if (exitCode !== 0 && !root.errorText)
+                root.errorText = "Calendar reader failed";
             if (root.refreshPending)
                 Qt.callLater(root.refresh);
         }
@@ -162,7 +172,7 @@ PopupSurface {
             id: month
             width: parent.width
             today: root.today
-            dayCounts: root.dayCounts
+            dayCounts: HelperBuild.ready ? root.dayCounts : ({})
             selectedDay: root.selectedDay
             onDayClicked: day => root.selectDay(day)
             onMonthKeyChanged: {
@@ -175,12 +185,14 @@ PopupSurface {
         }
 
         Rectangle {
+            visible: HelperBuild.ready
             width: parent.width
             height: 1
             color: theme.alpha(theme.text, 0.12)
         }
 
         Row {
+            visible: HelperBuild.ready
             width: parent.width
             height: 26
             Text {
@@ -206,7 +218,7 @@ PopupSurface {
 
         Text {
             width: parent.width
-            visible: root.errorText.length > 0 || root.warningText.length > 0
+            visible: HelperBuild.ready && (root.errorText.length > 0 || root.warningText.length > 0)
             text: root.errorText || root.warningText
             color: root.errorText ? theme.red : theme.yellow
             font.family: theme.fontFamily
@@ -217,7 +229,7 @@ PopupSurface {
 
         Text {
             width: parent.width
-            visible: root.shownEvents.length === 0
+            visible: HelperBuild.ready && root.shownEvents.length === 0
             text: root.errorText ? "Calendar unavailable" : !root.loaded ? "Loading Thunderbird calendars…" : root.selectedDay ? "No events on this day" : "No upcoming events"
             color: theme.subtext0
             font.family: theme.fontFamily
@@ -229,7 +241,7 @@ PopupSurface {
             id: agenda
             width: parent.width
             height: Math.min(contentHeight, 400)
-            visible: count > 0
+            visible: HelperBuild.ready && count > 0
             clip: true
             spacing: 6
             model: root.shownEvents

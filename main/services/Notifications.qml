@@ -17,8 +17,7 @@ Scope {
     readonly property alias doNotDisturb: state.dnd
     readonly property alias alwaysOnTop: state.alwaysOnTop
     readonly property var history: entries.filter(entry => !entry.transient)
-    readonly property var popups: doNotDisturb || centerOpen ? []
-        : entries.filter(entry => entry.popup).slice(0, popupLimit)
+    readonly property var popups: doNotDisturb || centerOpen ? [] : entries.filter(entry => entry.popup).slice(0, popupLimit)
     readonly property int unreadCount: history.filter(entry => entry.unread).length
     readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/quickshell"
     property bool directoryReady: false
@@ -75,7 +74,10 @@ Scope {
     function markRead() {
         for (const entry of entries.filter(item => item.transient))
             hidePopup(entry.uid);
-        setEntries(entries.map(entry => Object.assign({}, entry, { unread: false, popup: false })));
+        setEntries(entries.map(entry => Object.assign({}, entry, {
+                unread: false,
+                popup: false
+            })));
     }
 
     Connections {
@@ -102,16 +104,17 @@ Scope {
 
     function receive(notification) {
         notification.tracked = true;
-        const previous = notification.lastGeneration ? entries.find(entry =>
-            entry.session === state.session && entry.sourceId === notification.id && entry.live) : null;
+        const previous = notification.lastGeneration ? entries.find(entry => entry.session === state.session && entry.sourceId === notification.id && entry.live) : null;
         const uid = previous ? previous.uid : state.session + "-" + (++state.serial);
         liveRefs[uid] = notification;
-        const refresh = function() { root.refreshNotification(uid); };
-        for (const name of ["summaryChanged", "bodyChanged", "appNameChanged", "appIconChanged",
-                           "imageChanged", "urgencyChanged", "expireTimeoutChanged", "actionsChanged",
-                           "hasInlineReplyChanged", "inlineReplyPlaceholderChanged", "transientChanged"])
+        const refresh = function () {
+            root.refreshNotification(uid);
+        };
+        for (const name of ["summaryChanged", "bodyChanged", "appNameChanged", "appIconChanged", "imageChanged", "urgencyChanged", "expireTimeoutChanged", "actionsChanged", "hasInlineReplyChanged", "inlineReplyPlaceholderChanged", "transientChanged"])
             notification[name].connect(refresh);
-        notification.closed.connect(function() { root.closed(uid); });
+        notification.closed.connect(function () {
+            root.closed(uid);
+        });
         if (previous) {
             if (previous.popup && previous.timeout > 0)
                 remaining[uid] = previous.timeout;
@@ -159,7 +162,13 @@ Scope {
         if (entry.transient)
             setEntries(entries.filter(item => item.uid !== uid));
         else
-            patch(uid, { live: false, actions: [], inlineReply: false, popup: false, image: "" });
+            patch(uid, {
+                live: false,
+                actions: [],
+                inlineReply: false,
+                popup: false,
+                image: ""
+            });
     }
 
     function hidePopup(uid) {
@@ -173,7 +182,9 @@ Scope {
             else
                 dismiss(uid);
         } else {
-            patch(uid, { popup: false });
+            patch(uid, {
+                popup: false
+            });
         }
     }
 
@@ -217,7 +228,10 @@ Scope {
         const action = notification.actions.find(item => item.identifier === actionId);
         if (!action)
             return false;
-        patch(uid, { popup: false, unread: false });
+        patch(uid, {
+            popup: false,
+            unread: false
+        });
         action.invoke();
         return true;
     }
@@ -226,7 +240,10 @@ Scope {
         const notification = liveRefs[uid];
         if (!notification || !notification.hasInlineReply || !text.trim())
             return false;
-        patch(uid, { popup: false, unread: false });
+        patch(uid, {
+            popup: false,
+            unread: false
+        });
         notification.sendInlineReply(text);
         return true;
     }
@@ -261,7 +278,7 @@ Scope {
     Process {
         command: ["mkdir", "-m", "700", "-p", root.stateDirectory]
         running: true
-        onExited: (code) => {
+        onExited: code => {
             root.directoryReady = code === 0;
             if (code !== 0)
                 root.persistenceError = "Could not create notification state directory";
@@ -284,9 +301,12 @@ Scope {
     Timer {
         id: saveTimer
         interval: 200
-        onTriggered: stateFile.setText(JSON.stringify({ version: 1, dnd: state.dnd,
+        onTriggered: stateFile.setText(JSON.stringify({
+            version: 1,
+            dnd: state.dnd,
             alwaysOnTop: state.alwaysOnTop,
-            entries: Logic.persistentEntries(root.entries, root.historyLimit) }) + "\n")
+            entries: Logic.persistentEntries(root.entries, root.historyLimit)
+        }) + "\n")
     }
 
     // One timer for the entire service, and no work when there are no timed
@@ -320,16 +340,34 @@ Scope {
 
     IpcHandler {
         target: "notifications"
-        function toggle(): void { root.toggleCenter(""); }
-        function close(): void { root.centerOpen = false; }
-        function toggleDnd(): bool { root.setDnd(!root.doNotDisturb); return root.doNotDisturb; }
-        function setDnd(enabled: bool): void { root.setDnd(enabled); }
-        function clear(): void { root.clear(); }
-        function dismissAll(): void { root.dismissPopups(); }
+        function toggle(): void {
+            root.toggleCenter("");
+        }
+        function close(): void {
+            root.centerOpen = false;
+        }
+        function toggleDnd(): bool {
+            root.setDnd(!root.doNotDisturb);
+            return root.doNotDisturb;
+        }
+        function setDnd(enabled: bool): void {
+            root.setDnd(enabled);
+        }
+        function clear(): void {
+            root.clear();
+        }
+        function dismissAll(): void {
+            root.dismissPopups();
+        }
         function getState(): string {
-            return JSON.stringify({ dnd: root.doNotDisturb, open: root.centerOpen,
-                unread: root.unreadCount, count: root.history.length, popups: root.popups.length,
-                persistenceError: root.persistenceError });
+            return JSON.stringify({
+                dnd: root.doNotDisturb,
+                open: root.centerOpen,
+                unread: root.unreadCount,
+                count: root.history.length,
+                popups: root.popups.length,
+                persistenceError: root.persistenceError
+            });
         }
     }
 }

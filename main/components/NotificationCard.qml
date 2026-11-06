@@ -27,11 +27,17 @@ PopupSurface {
     color: theme.alpha(theme.base, 0.97)
     border.color: entry.urgency === 2 ? theme.red : entry.unread ? theme.alpha(theme.sky, 0.5) : theme.alpha(theme.text, 0.12)
 
-    transform: Translate { x: root.swipeOffset }
+    transform: Translate {
+        x: root.swipeOffset
+    }
     opacity: 1 - Math.min(Math.abs(swipeOffset) / Math.max(1, width), 1)
 
-    Theme { id: theme }
-    HoverHandler { id: hover }
+    Theme {
+        id: theme
+    }
+    HoverHandler {
+        id: hover
+    }
     DragHandler {
         id: swipe
         target: null

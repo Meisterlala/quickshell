@@ -6,6 +6,11 @@ import Quickshell
 Scope {
     id: root
 
+    // One supervisor owns helper builds and their persistent status card.
+    HelperBuildWindows {
+        service: HelperBuild
+    }
+
     ShellIpc {
         id: shellIpc
     }
@@ -23,5 +28,4 @@ Scope {
         ipc: shellIpc
         notifications: notificationService
     }
-
 }

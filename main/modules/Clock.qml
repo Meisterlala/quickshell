@@ -1,6 +1,7 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import "../popups"
-import ".."
 import QtQuick
 import Quickshell
 
@@ -13,7 +14,8 @@ Item {
     property bool alternativeMode: false
     property bool popupOpen: false
     property bool popupPinned: false
-    signal alternativeModeToggled()
+    readonly property CalendarPopup calendar: calendarLoader.item as CalendarPopup
+    signal alternativeModeToggled
 
     function updateHover() {
         if (pill.hovered || popupHover.hovered || popupPinned) {
@@ -49,7 +51,7 @@ Item {
         text: Qt.formatDateTime(clock.date, "hh:mm") + " "
         moduleClass: root.alternativeMode ? "warning" : ""
         onHoveredChanged: root.updateHover()
-        onClicked: (button) => {
+        onClicked: button => {
             if (button === Qt.MiddleButton) {
                 root.alternativeModeToggled();
                 root.popupPinned = false;
@@ -64,8 +66,8 @@ Item {
     Connections {
         target: root.ipc
         function onRefreshRequested(name) {
-            if ((name === "calendar" || name === "all") && calendarLoader.item)
-                calendarLoader.item.refresh();
+            if ((name === "calendar" || name === "all") && root.calendar)
+                root.calendar.refresh();
         }
         function onPopupRequested(name) {
             if (name === "calendar" && root.popupIpcEnabled) {
@@ -80,7 +82,7 @@ Item {
         anchor.rect.x: root.barWindow ? root.barWindow.width - width - 8 : 0
         anchor.rect.y: root.barWindow ? root.barWindow.height + 8 : 0
         implicitWidth: 380
-        implicitHeight: calendarLoader.item ? calendarLoader.item.implicitHeight : 500
+        implicitHeight: root.calendar ? root.calendar.implicitHeight : 500
         color: "transparent"
         visible: root.popupOpen
         grabFocus: false
@@ -103,7 +105,5 @@ Item {
                 today: clock.date
             }
         }
-
     }
-
 }

@@ -1,9 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 
 ClippingRectangle {
@@ -14,9 +14,8 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 15000
     property string moduleName: "habits"
-    property string command: Quickshell.shellPath("scripts/habits_quickshell.py")
     property string text: ""
-    property string state: "pending"
+    property string moduleState: "pending"
     property string date: ""
     property string errorText: ""
     property var summary: ({})
@@ -40,10 +39,10 @@ ClippingRectangle {
     property string pendingAction: ""
     property var actionQueue: []
     property bool refreshPending: false
-    signal alternativeModeRequested()
+    signal alternativeModeRequested
     readonly property bool popupVisible: visible && (mouse.containsMouse || popupPinned)
-    readonly property bool hasError: state === "error" || errorText.length > 0
-    readonly property string accent: hasError ? theme.red : state === "done" ? theme.green : state === "warning" ? theme.yellow : state === "active" ? theme.sky : theme.red
+    readonly property bool hasError: moduleState === "error" || errorText.length > 0
+    readonly property string accent: hasError ? theme.red : moduleState === "done" ? theme.green : moduleState === "warning" ? theme.yellow : moduleState === "active" ? theme.sky : theme.red
     readonly property string accentSoft: theme.alpha(String(accent), 0.24)
 
     function refresh() {
@@ -54,7 +53,7 @@ ClippingRectangle {
             return;
         }
         refreshPending = false;
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function isActionPending(actionKey) {
@@ -66,7 +65,12 @@ ClippingRectangle {
             return;
         if (!pendingAction && actionQueue.length === 0)
             actionError = "";
-        actionQueue = actionQueue.concat([{args: args, key: actionKey}]);
+        actionQueue = actionQueue.concat([
+            {
+                args: args,
+                key: actionKey
+            }
+        ]);
         startNextAction();
     }
 
@@ -76,21 +80,21 @@ ClippingRectangle {
         const action = actionQueue[0];
         actionQueue = actionQueue.slice(1);
         pendingAction = action.key;
-        actionRunner.exec(["/usr/bin/python3", command].concat(action.args));
+        actionRunner.run(action.args);
     }
 
     function finishAction(exitCode) {
         if (!pendingAction)
             return;
         if (exitCode !== 0)
-            actionError = actionErrors.text.trim() || actionOutput.text.trim() || "Habits action failed";
+            actionError = actionRunner.errorText.trim() || actionRunner.outputText.trim() || "Habits action failed";
         pendingAction = "";
         refresh();
         Qt.callLater(startNextAction);
     }
 
     function toggleApp() {
-        launcher.exec(["/usr/bin/python3", command, "--toggle-app"]);
+        launcher.run(["--toggle-app"]);
     }
 
     function toggleHabit(habit) {
@@ -110,7 +114,7 @@ ClippingRectangle {
         const trimmed = output.trim();
         if (trimmed.length === 0) {
             errorText = "No Habits output";
-            state = "error";
+            moduleState = "error";
             text = "?/?";
             return;
         }
@@ -118,7 +122,7 @@ ClippingRectangle {
         try {
             const parsed = ModuleData.parseObject(trimmed);
             text = String(parsed.text || "?/?");
-            state = String(parsed.state || "pending");
+            moduleState = String(parsed.state || "pending");
             date = String(parsed.date || "");
             errorText = String(parsed.error || "");
             summary = parsed.summary || ({});
@@ -138,7 +142,7 @@ ClippingRectangle {
             previousAllHabitsDone = allDone;
         } catch (error) {
             errorText = trimmed;
-            state = "error";
+            moduleState = "error";
             text = "?/?";
         }
     }
@@ -206,7 +210,7 @@ ClippingRectangle {
             color: theme.text
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
-            text: root.hasError ? root.text : `${Number(summary.habits_done || 0)}/${Number(summary.habits_total || 0)}`
+            text: root.hasError ? root.text : `${Number(root.summary.habits_done || 0)}/${Number(root.summary.habits_total || 0)}`
             textFormat: Text.PlainText
         }
 
@@ -276,7 +280,7 @@ ClippingRectangle {
                             font.family: theme.fontFamily
                             font.pixelSize: theme.tooltipFontPixelSize + 5
                             font.bold: true
-                            text: root.hasError ? "Habits unavailable" : `Habits Today · ${Number(summary.habits_done || 0)}/${Number(summary.habits_total || 0)} done`
+                            text: root.hasError ? "Habits unavailable" : `Habits Today · ${Number(root.summary.habits_done || 0)}/${Number(root.summary.habits_total || 0)} done`
                         }
 
                         Text {
@@ -297,32 +301,32 @@ ClippingRectangle {
 
                     StatChip {
                         label: "Today"
-                        value: String(summary.points_today_label || "0")
-                        accent: root.valueColor(summary.points_today)
+                        value: String(root.summary.points_today_label || "0")
+                        accent: root.valueColor(root.summary.points_today)
                     }
 
                     StatChip {
                         label: "Rolling"
-                        value: `${String(summary.recent_points_label || "0")}${summary.rolling_delta_label ? " (" + summary.rolling_delta_label + ")" : ""}`
-                        accent: root.valueColor(summary.recent_points)
+                        value: `${String(root.summary.recent_points_label || "0")}${root.summary.rolling_delta_label ? " (" + root.summary.rolling_delta_label + ")" : ""}`
+                        accent: root.valueColor(root.summary.recent_points)
                     }
 
                     StatChip {
                         label: "Banked"
-                        value: String(summary.banked_points_label || "0")
-                        accent: root.valueColor(summary.banked_points)
+                        value: String(root.summary.banked_points_label || "0")
+                        accent: root.valueColor(root.summary.banked_points)
                     }
 
                     StatChip {
                         label: "Punish"
-                        value: String(summary.punishment_points_label || "0")
-                        accent: root.valueColor(-Number(summary.punishment_points || 0))
+                        value: String(root.summary.punishment_points_label || "0")
+                        accent: root.valueColor(-Number(root.summary.punishment_points || 0))
                     }
 
                     StatChip {
-                        visible: String(summary.weight_label || "").length > 0
+                        visible: String(root.summary.weight_label || "").length > 0
                         label: "Weight"
-                        value: String(summary.weight_label || "")
+                        value: String(root.summary.weight_label || "")
                         accent: theme.sky
                     }
                 }
@@ -392,7 +396,7 @@ ClippingRectangle {
 
                         Repeater {
                             model: root.notificationsCollapsed ? [] : root.notifications
-                            NotificationCard {
+                            HabitNotificationCard {
                                 required property var modelData
                                 width: bodyColumn.width
                                 notification: modelData
@@ -491,6 +495,7 @@ ClippingRectangle {
     }
 
     component StatChip: Rectangle {
+        id: chipRoot
         required property string label
         required property string value
         required property string accent
@@ -510,19 +515,20 @@ ClippingRectangle {
                 color: theme.subtext0
                 font.family: theme.fontFamily
                 font.pixelSize: 10
-                text: label
+                text: chipRoot.label
             }
             Text {
-                color: accent
+                color: chipRoot.accent
                 font.family: theme.fontFamily
                 font.pixelSize: 12
                 font.bold: true
-                text: value
+                text: chipRoot.value
             }
         }
     }
 
     component CountSegment: Row {
+        id: countRoot
         required property string icon
         required property int value
         required property string accent
@@ -532,20 +538,20 @@ ClippingRectangle {
         Text {
             width: 16
             anchors.verticalCenter: parent.verticalCenter
-            color: accent
+            color: countRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
             horizontalAlignment: Text.AlignHCenter
-            text: icon
+            text: countRoot.icon
             textFormat: Text.PlainText
         }
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
-            color: accent
+            color: countRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
-            text: String(value)
+            text: String(countRoot.value)
             textFormat: Text.PlainText
         }
     }
@@ -557,7 +563,7 @@ ClippingRectangle {
         property int count: 0
         required property string accent
         property bool collapsed: false
-        signal toggled()
+        signal toggled
 
         width: parent ? parent.width : implicitWidth
         height: 22
@@ -567,7 +573,7 @@ ClippingRectangle {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             width: 16
-            color: accent
+            color: sectionRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
@@ -581,25 +587,25 @@ ClippingRectangle {
             anchors.right: sectionCount.visible ? sectionCount.left : parent.right
             anchors.rightMargin: sectionCount.visible ? 10 : 0
             anchors.verticalCenter: parent.verticalCenter
-            color: accent
+            color: sectionRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize + 1
             font.bold: true
             elide: Text.ElideRight
-            text: title
+            text: sectionRoot.title
         }
 
         Text {
             id: sectionCount
-            visible: count > 0
+            visible: sectionRoot.count > 0
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            color: accent
+            color: sectionRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize + 1
             font.bold: true
             horizontalAlignment: Text.AlignRight
-            text: String(count)
+            text: String(sectionRoot.count)
         }
 
         MouseArea {
@@ -613,7 +619,7 @@ ClippingRectangle {
         id: habitRoot
         required property var habit
         property bool busy: false
-        signal toggleRequested()
+        signal toggleRequested
 
         height: 44
         radius: 10
@@ -626,10 +632,10 @@ ClippingRectangle {
             anchors.left: parent.left
             anchors.leftMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            color: habit.done ? theme.green : theme.red
+            color: habitRoot.habit.done ? theme.green : theme.red
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize + 2
-            text: habitRoot.busy ? "󰔟" : habit.done ? "󰄲" : "󰄱"
+            text: habitRoot.busy ? "󰔟" : habitRoot.habit.done ? "󰄲" : "󰄱"
         }
 
         Text {
@@ -642,8 +648,8 @@ ClippingRectangle {
             elide: Text.ElideRight
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize + 1
-            font.bold: !habit.done
-            text: String(habit.name || "Habit")
+            font.bold: !habitRoot.habit.done
+            text: String(habitRoot.habit.name || "Habit")
         }
 
         Text {
@@ -651,10 +657,10 @@ ClippingRectangle {
             anchors.right: parent.right
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
-            color: root.valueColor(habit.effective_points)
+            color: root.valueColor(habitRoot.habit.effective_points)
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize
-            text: String(habit.points_label || "")
+            text: String(habitRoot.habit.points_label || "")
         }
 
         MouseArea {
@@ -670,7 +676,7 @@ ClippingRectangle {
         id: eventRoot
         required property var eventItem
         property bool busy: false
-        signal stopRequested()
+        signal stopRequested
 
         height: 58
         radius: 12
@@ -692,7 +698,7 @@ ClippingRectangle {
                 font.family: theme.fontFamily
                 font.pixelSize: theme.tooltipFontPixelSize + 1
                 font.bold: true
-                text: String(eventItem.name || "Running event")
+                text: String(eventRoot.eventItem.name || "Running event")
             }
             Text {
                 width: parent.width
@@ -700,7 +706,7 @@ ClippingRectangle {
                 elide: Text.ElideRight
                 font.family: theme.fontFamily
                 font.pixelSize: 11
-                text: `󰥔 ${String(eventItem.amount_label || "running")} · ${String(eventItem.points_label || "")}`
+                text: `󰥔 ${String(eventRoot.eventItem.amount_label || "running")} · ${String(eventRoot.eventItem.points_label || "")}`
             }
         }
 
@@ -716,62 +722,6 @@ ClippingRectangle {
         }
     }
 
-    component NotificationCard: Rectangle {
-        required property var notification
-        height: notificationColumn.implicitHeight + 18
-        radius: 12
-        color: theme.alpha(theme.red, 0.2)
-        border.color: theme.alpha(theme.red, 0.52)
-        border.width: 1
-
-        Column {
-            id: notificationColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: 12
-            spacing: 4
-            Text {
-                width: parent.width
-                color: theme.text
-                elide: Text.ElideRight
-                font.family: theme.fontFamily
-                font.pixelSize: theme.tooltipFontPixelSize + 1
-                font.bold: true
-                text: String(notification.title || "Notification")
-            }
-            Text {
-                visible: String(notification.description || "").length > 0
-                width: parent.width
-                color: theme.subtext0
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                wrapMode: Text.Wrap
-                text: String(notification.description || "")
-            }
-            Rectangle {
-                visible: Number(notification.progress_max || 0) > 0
-                width: parent.width
-                height: 6
-                radius: 3
-                color: theme.alpha(theme.text, 0.12)
-                Rectangle {
-                    height: parent.height
-                    radius: parent.radius
-                    width: Math.min(parent.width, parent.width * Number(notification.progress_current || 0) / Math.max(1, Number(notification.progress_max || 1)))
-                    color: theme.red
-                }
-            }
-            Text {
-                visible: String(notification.progress_label || "").length > 0
-                color: theme.overlay1
-                font.family: theme.fontFamily
-                font.pixelSize: 10
-                text: String(notification.progress_label || "")
-            }
-        }
-    }
-
     component DeadlineCard: SimpleCard {
         required property var deadline
         title: String(deadline.title || "Deadline")
@@ -781,6 +731,7 @@ ClippingRectangle {
     }
 
     component PolicyCard: Rectangle {
+        id: policyRoot
         required property var policy
 
         height: policyColumn.implicitHeight + 20
@@ -807,7 +758,7 @@ ClippingRectangle {
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
-                text: String(policy.description || "Policy")
+                text: String(policyRoot.policy.description || "Policy")
             }
 
             Text {
@@ -818,7 +769,7 @@ ClippingRectangle {
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
-                text: `${String(policy.progress_label || "")} · ${String(policy.message || "")}`
+                text: `${String(policyRoot.policy.progress_label || "")} · ${String(policyRoot.policy.message || "")}`
             }
         }
 
@@ -828,16 +779,17 @@ ClippingRectangle {
             anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
             width: 76
-            color: root.valueColor(policy.points_delta)
+            color: root.valueColor(policyRoot.policy.points_delta)
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize + 8
             font.bold: true
             horizontalAlignment: Text.AlignRight
-            text: String(policy.points_label || "")
+            text: String(policyRoot.policy.points_label || "")
         }
     }
 
     component SimpleCard: Rectangle {
+        id: simpleRoot
         required property string title
         property string body: ""
         property string rightLabel: ""
@@ -855,7 +807,7 @@ ClippingRectangle {
             anchors.right: simpleRightLabel.visible ? simpleRightLabel.left : parent.right
             anchors.verticalCenter: parent.verticalCenter
             anchors.leftMargin: 12
-            anchors.rightMargin: simpleRightLabel.visible ? 12 : 12
+            anchors.rightMargin: 12
             spacing: 3
             Text {
                 width: parent.width
@@ -866,10 +818,10 @@ ClippingRectangle {
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
-                text: title
+                text: simpleRoot.title
             }
             Text {
-                visible: body.length > 0
+                visible: simpleRoot.body.length > 0
                 width: parent.width
                 color: theme.subtext0
                 font.family: theme.fontFamily
@@ -877,25 +829,25 @@ ClippingRectangle {
                 wrapMode: Text.Wrap
                 maximumLineCount: 3
                 elide: Text.ElideRight
-                text: body
+                text: simpleRoot.body
             }
         }
 
         Text {
             id: simpleRightLabel
-            visible: rightLabel.length > 0
+            visible: simpleRoot.rightLabel.length > 0
             anchors.right: parent.right
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             width: 100
-            color: accent
+            color: simpleRoot.accent
             font.family: theme.fontFamily
             font.pixelSize: theme.tooltipFontPixelSize + 2
             font.bold: true
             horizontalAlignment: Text.AlignRight
             wrapMode: Text.Wrap
             maximumLineCount: 2
-            text: rightLabel
+            text: simpleRoot.rightLabel
         }
     }
 
@@ -903,7 +855,7 @@ ClippingRectangle {
         id: buttonRoot
         required property string label
         required property string accent
-        signal pressed()
+        signal pressed
 
         implicitWidth: buttonText.implicitWidth + 20
         implicitHeight: 30
@@ -937,7 +889,7 @@ ClippingRectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
         z: 10
-        onClicked: (event) => {
+        onClicked: event => {
             if (event.button === Qt.LeftButton)
                 root.toggleApp();
             else if (event.button === Qt.RightButton)
@@ -945,7 +897,7 @@ ClippingRectangle {
             else if (event.button === Qt.MiddleButton)
                 root.alternativeModeRequested();
         }
-        onWheel: (wheel) => {
+        onWheel: wheel => {
             root.scrollList(wheel.angleDelta.y);
             wheel.accepted = true;
         }
@@ -958,31 +910,25 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "habits"
+        onOutput: text => root.applyOutput(text)
         onExited: {
             if (root.refreshPending)
                 Qt.callLater(root.refresh);
         }
     }
 
-    Process {
+    HelperProcess {
         id: actionRunner
-        stdout: StdioCollector { id: actionOutput }
-        stderr: StdioCollector { id: actionErrors }
-        onExited: (exitCode, exitStatus) => root.finishAction(exitCode)
-        onRunningChanged: {
-            // Failed-to-start does not emit exited.
-            if (!running && root.pendingAction)
-                root.finishAction(-1);
-        }
+        helper: "habits"
+        onExited: exitCode => root.finishAction(exitCode)
     }
 
-    Process {
+    HelperProcess {
         id: launcher
+        helper: "habits"
     }
 
     Connections {

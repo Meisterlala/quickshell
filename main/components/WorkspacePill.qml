@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import ".."
 import "../services"
 import "../services/WorkspaceWindowOrder.js" as WindowOrder
@@ -23,8 +25,7 @@ Rectangle {
     onSpatialWindowsChanged: syncWindowOrder()
 
     function syncWindowOrder() {
-        if (windows.length !== spatialWindows.length
-                || spatialWindows.some((window, index) => window !== windows[index]))
+        if (windows.length !== spatialWindows.length || spatialWindows.some((window, index) => window !== windows[index]))
             windows = spatialWindows;
     }
     readonly property bool occupied: windows.length > 0
@@ -68,10 +69,7 @@ Rectangle {
         // desktop IDs. Also match desktop metadata, reacting when entries load.
         const entries = root.desktopEntries;
         const key = app.toLowerCase().replace(/\.desktop$/, "");
-        const entry = DesktopEntries.heuristicLookup(app)
-            || entries.find(candidate => candidate.startupClass.toLowerCase() === key)
-            || entries.find(candidate => candidate.name.toLowerCase() === key)
-            || entries.find(candidate => candidate.id.toLowerCase().endsWith("." + key));
+        const entry = DesktopEntries.heuristicLookup(app) || entries.find(candidate => candidate.startupClass.toLowerCase() === key) || entries.find(candidate => candidate.name.toLowerCase() === key) || entries.find(candidate => candidate.id.toLowerCase().endsWith("." + key));
         const icon = entry && entry.icon ? Quickshell.iconPath(entry.icon, true) : "";
         return icon || Quickshell.iconPath(app, true);
     }
@@ -169,9 +167,7 @@ Rectangle {
                     visible: parent.glyph.length === 0 && parent.iconSource.length === 0
                 }
             }
-
         }
-
     }
 
     MouseArea {
@@ -180,6 +176,6 @@ Rectangle {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         hoverEnabled: true
-        onClicked: (mouse) => root.clicked(mouse.button)
+        onClicked: mouse => root.clicked(mouse.button)
     }
 }

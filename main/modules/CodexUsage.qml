@@ -1,9 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
 import QtQuick
-import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 
 ClippingRectangle {
@@ -13,37 +13,36 @@ ClippingRectangle {
     property var ipc: null
     property bool moduleVisible: true
     property int interval: 300000
-    property string command: Quickshell.shellPath("scripts/codex_usage.py")
     readonly property int compactHorizontalPadding: 20
     readonly property int compactHeight: 34
     readonly property int cornerRadius: 8
     property var primary: ({
-        "label": "5h",
-        "available": false,
-        "usedPercent": 0,
-        "resetIn": "",
-        "resetAt": ""
-    })
+            "label": "5h",
+            "available": false,
+            "usedPercent": 0,
+            "resetIn": "",
+            "resetAt": ""
+        })
     property var secondary: ({
-        "label": "7d",
-        "available": false,
-        "usedPercent": 0,
-        "resetIn": "",
-        "resetAt": ""
-    })
+            "label": "7d",
+            "available": false,
+            "usedPercent": 0,
+            "resetIn": "",
+            "resetAt": ""
+        })
     property var credits: ({
-        "hasCredits": false,
-        "unlimited": false,
-        "balance": null
-    })
-    property string state: "normal"
+            "hasCredits": false,
+            "unlimited": false,
+            "balance": null
+        })
+    property string moduleState: "normal"
     property string errorText: ""
     readonly property bool hasData: errorText.length === 0
     readonly property real primaryPercent: ModuleData.clampPercent(primary.usedPercent)
     readonly property real secondaryPercent: ModuleData.clampPercent(secondary.usedPercent)
     readonly property bool hasCredits: Boolean(credits.hasCredits || credits.unlimited || (credits.balance && String(credits.balance) !== "0"))
-    readonly property string accent: state === "critical" || errorText.length > 0 ? theme.red : state === "warning" ? theme.yellow : theme.sky
-    readonly property string accentSoft: theme.alpha(String(accent), state === "normal" ? 0.3 : 0.42)
+    readonly property string accent: moduleState === "critical" || errorText.length > 0 ? theme.red : moduleState === "warning" ? theme.yellow : theme.sky
+    readonly property string accentSoft: theme.alpha(String(accent), moduleState === "normal" ? 0.3 : 0.42)
     readonly property bool tooltipVisible: mouse.containsMouse
     readonly property string creditsText: credits.unlimited ? "credits: unlimited" : `credits balance: ${credits.balance ?? "n/a"}`
 
@@ -62,7 +61,7 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function applyOutput(output) {
@@ -82,7 +81,7 @@ ClippingRectangle {
             primary = parsed.primary || primary;
             secondary = parsed.secondary || secondary;
             credits = parsed.credits || credits;
-            state = String(parsed.state || "normal");
+            moduleState = String(parsed.state || "normal");
             errorText = "";
         } catch (error) {
             errorText = plainTooltip(trimmed);
@@ -204,7 +203,6 @@ ClippingRectangle {
                         font.bold: true
                         text: "Codex usage"
                     }
-
                 }
 
                 UsageDetail {
@@ -239,9 +237,7 @@ ClippingRectangle {
                     text: root.creditsText
                 }
             }
-
         }
-
     }
 
     component UsageDetail: Column {
@@ -327,9 +323,7 @@ ClippingRectangle {
                 horizontalAlignment: Text.AlignRight
                 text: rowRoot.available ? `${Math.round(rowRoot.percent)}%` : "--"
             }
-
         }
-
     }
 
     MouseArea {
@@ -349,13 +343,10 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
-
+        helper: "codex-usage"
+        onOutput: text => root.applyOutput(text)
     }
 
     Connections {
@@ -370,6 +361,5 @@ ClippingRectangle {
     onModuleVisibleChanged: {
         if (moduleVisible)
             refresh();
-
     }
 }

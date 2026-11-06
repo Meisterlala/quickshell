@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
@@ -145,9 +147,9 @@ ClippingRectangle {
                 appendUsageHistory(currentUsage);
 
             cores = coreNames(stats).map(name => ({
-                "name": name,
-                "usage": usageFor(name, stats)
-            }));
+                        "name": name,
+                        "usage": usageFor(name, stats)
+                    }));
         }
 
         previousStats = stats;
@@ -418,7 +420,6 @@ ClippingRectangle {
             root.historySampleCounter = 0;
             if (containsMouse)
                 root.refresh();
-
         }
     }
 
@@ -432,7 +433,6 @@ ClippingRectangle {
         onIntervalChanged: {
             if (running)
                 restart();
-
         }
     }
 
@@ -465,6 +465,5 @@ ClippingRectangle {
         resetSamples();
         if (moduleVisible)
             refresh();
-
     }
 }

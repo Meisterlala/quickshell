@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
@@ -14,7 +16,6 @@ ClippingRectangle {
     property bool moduleVisible: true
     property int interval: 900000
     property string moduleName: "updates"
-    property string command: Quickshell.shellPath("scripts/arch_updates.py")
     property string updateCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
     property int count: 0
     property string state: "updated"
@@ -65,7 +66,7 @@ ClippingRectangle {
         if (!moduleVisible || refreshRunner.running)
             return;
 
-        refreshRunner.exec(["/usr/bin/python3", command]);
+        refreshRunner.run();
     }
 
     function runUpdate() {
@@ -373,19 +374,17 @@ ClippingRectangle {
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         hoverEnabled: true
         z: 10
-        onClicked: (event) => {
+        onClicked: event => {
             if (event.button === Qt.LeftButton)
                 root.runUpdate();
             else if (event.button === Qt.RightButton)
                 root.refresh();
-
         }
         onContainsMouseChanged: {
             if (containsMouse)
                 root.refresh();
-
         }
-        onWheel: (wheel) => {
+        onWheel: wheel => {
             root.scrollList(wheel.angleDelta.y);
             wheel.accepted = true;
         }
@@ -398,12 +397,10 @@ ClippingRectangle {
         onTriggered: root.refresh()
     }
 
-    Process {
+    HelperProcess {
         id: refreshRunner
-
-        stdout: StdioCollector {
-            onStreamFinished: root.applyOutput(this.text)
-        }
+        helper: "updates"
+        onOutput: text => root.applyOutput(text)
     }
 
     Connections {

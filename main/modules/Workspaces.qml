@@ -1,5 +1,6 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
-import ".."
 import QtQuick
 import Quickshell.Hyprland
 
@@ -31,7 +32,5 @@ Row {
             workspace: modelData
             onClicked: modelData.activate()
         }
-
     }
-
 }

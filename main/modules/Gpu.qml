@@ -25,7 +25,6 @@ ClippingRectangle {
     readonly property real memoryPercent: memoryTotal > 0 ? ModuleData.clampPercent(memoryUsed * 100 / memoryTotal) : 0
     readonly property bool driverMismatch: driverVersion.length > 0 && kernelDriverVersion.length > 0 && driverVersion !== kernelDriverVersion
     readonly property bool hasError: errorText.length > 0 || driverMismatch
-    readonly property string state: hasError ? "error" : utilization >= 90 ? "warning" : "normal"
     readonly property string accent: hasError ? theme.red : utilization >= 90 ? theme.yellow : theme.sky
     readonly property string accentSoft: theme.alpha(String(accent), hasError ? 0.34 : 0.28)
     readonly property bool tooltipVisible: mouse.containsMouse
@@ -252,7 +251,6 @@ ClippingRectangle {
         onContainsMouseChanged: {
             if (containsMouse)
                 root.refresh();
-
         }
     }
 
@@ -264,7 +262,6 @@ ClippingRectangle {
         onIntervalChanged: {
             if (running)
                 restart();
-
         }
     }
 
@@ -290,6 +287,5 @@ ClippingRectangle {
             refresh();
         else
             errorText = "";
-
     }
 }

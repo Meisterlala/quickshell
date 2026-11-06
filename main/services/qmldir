@@ -1,0 +1,5 @@
+singleton HelperBuild 1.0 HelperBuild.qml
+Notifications Notifications.qml
+ShellIpc ShellIpc.qml
+WorkspaceIconMap WorkspaceIconMap.qml
+singleton WorkspaceWindowOrder 1.0 WorkspaceWindowOrder.qml

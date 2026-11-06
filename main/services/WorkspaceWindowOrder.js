@@ -4,14 +4,15 @@ function spatialOrder(windows) {
     const unknown = [];
     for (const window of windows) {
         const ipc = window.lastIpcObject;
-        if (!ipc || !ipc.at || !ipc.size
-                || !Number.isFinite(ipc.at[0]) || !Number.isFinite(ipc.at[1])
-                || !Number.isFinite(ipc.size[0]) || !Number.isFinite(ipc.size[1])
-                || ipc.size[0] <= 0 || ipc.size[1] <= 0) {
+        if (!ipc || !ipc.at || !ipc.size || !Number.isFinite(ipc.at[0]) || !Number.isFinite(ipc.at[1]) || !Number.isFinite(ipc.size[0]) || !Number.isFinite(ipc.size[1]) || ipc.size[0] <= 0 || ipc.size[1] <= 0) {
             unknown.push(window);
             continue;
         }
-        positioned.push({ window: window, x: ipc.at[0] + ipc.size[0] / 2, y: ipc.at[1] });
+        positioned.push({
+            window: window,
+            x: ipc.at[0] + ipc.size[0] / 2,
+            y: ipc.at[1]
+        });
     }
 
     function addressOrder(a, b) {
@@ -22,7 +23,7 @@ function spatialOrder(windows) {
 
     positioned.sort((a, b) => a.x - b.x || a.y - b.y || addressOrder(a.window, b.window));
     const result = [];
-    for (let start = 0; start < positioned.length;) {
+    for (let start = 0; start < positioned.length; ) {
         let end = start + 1;
         // Anchor each column to its first centre, avoiding non-transitive
         // fuzzy comparators and tolerating small differences in stacked tiles.

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import ".."
 import "../components"
 import QtQuick
@@ -29,7 +31,7 @@ Rectangle {
 
     function isIgnored(item) {
         const values = [trayField(item, "id"), trayField(item, "title"), trayField(item, "tooltipTitle"), trayField(item, "name")];
-        return ignoredTrayItems.some((ignored) => {
+        return ignoredTrayItems.some(ignored => {
             return values.includes(String(ignored).toLowerCase());
         });
     }
@@ -68,7 +70,7 @@ Rectangle {
 
                 function displayMenu() {
                     if (!modelData.hasMenu)
-                        return ;
+                        return;
 
                     menuOpen = !menuOpen;
                 }
@@ -81,7 +83,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: 20
                     height: 20
-                    source: modelData.icon
+                    source: trayItem.modelData.icon
                 }
 
                 MouseArea {
@@ -90,11 +92,11 @@ Rectangle {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     hoverEnabled: true
-                    onClicked: (mouse) => {
-                        if (mouse.button === Qt.LeftButton && !modelData.onlyMenu)
-                            modelData.activate();
+                    onClicked: mouse => {
+                        if (mouse.button === Qt.LeftButton && !trayItem.modelData.onlyMenu)
+                            trayItem.modelData.activate();
                         else if (mouse.button === Qt.MiddleButton)
-                            modelData.secondaryActivate();
+                            trayItem.modelData.secondaryActivate();
                         else
                             trayItem.displayMenu();
                     }
@@ -136,9 +138,7 @@ Rectangle {
                             textFormat: Text.PlainText
                             wrapMode: Text.Wrap
                         }
-
                     }
-
                 }
 
                 PopupWindow {
@@ -166,7 +166,6 @@ Rectangle {
                     onVisibleChanged: {
                         if (!visible)
                             trayItem.menuOpen = false;
-
                     }
 
                     PopupSurface {
@@ -281,13 +280,9 @@ Rectangle {
                                             }
                                         }
                                     }
-
                                 }
-
                             }
-
                         }
-
                     }
 
                     QsMenuOpener {
@@ -299,13 +294,8 @@ Rectangle {
                     Theme {
                         id: theme
                     }
-
                 }
-
             }
-
         }
-
     }
-
 }

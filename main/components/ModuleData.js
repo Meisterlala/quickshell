@@ -20,4 +20,8 @@ function formatText(format, text, icon) {
 }
 
 if (typeof module !== "undefined")
-    module.exports = { clampPercent, parseObject, formatText };
+    module.exports = {
+        clampPercent,
+        parseObject,
+        formatText
+    };

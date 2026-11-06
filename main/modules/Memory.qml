@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import "../components"
 import ".."
 import "../components/ModuleData.js" as ModuleData
@@ -29,10 +31,7 @@ ClippingRectangle {
     property real tmpfsUsed: 0
     property bool tmpfsAvailable: false
     property string errorText: ""
-    readonly property string memCommand: [
-        "awk '/^(MemTotal|MemAvailable|MemFree|Buffers|Cached|Shmem|AnonPages|SReclaimable|KReclaimable|Zswap|Zswapped|SwapTotal|SwapFree):/ {print $1, $2}' /proc/meminfo",
-        "LC_ALL=C df -k --output=used -t tmpfs | awk 'NR > 1 {used += $1; count++} END {if (count > 0) print \"TmpfsUsed\", used}'"
-    ].join("; ")
+    readonly property string memCommand: ["awk '/^(MemTotal|MemAvailable|MemFree|Buffers|Cached|Shmem|AnonPages|SReclaimable|KReclaimable|Zswap|Zswapped|SwapTotal|SwapFree):/ {print $1, $2}' /proc/meminfo", "LC_ALL=C df -k --output=used -t tmpfs | awk 'NR > 1 {used += $1; count++} END {if (count > 0) print \"TmpfsUsed\", used}'"].join("; ")
     // Exclude reclaimable file/kernel caches, but keep tmpfs and compressed RAM.
     // KReclaimable already contains SReclaimable; never subtract both.
     readonly property real reclaimableCache: Math.max(0, cached - shmem) + buffers + Math.max(0, kReclaimable >= 0 ? kReclaimable : sReclaimable)
@@ -350,7 +349,6 @@ ClippingRectangle {
         onContainsMouseChanged: {
             if (containsMouse)
                 root.refresh();
-
         }
     }
 
@@ -383,6 +381,5 @@ ClippingRectangle {
             refresh();
         else
             errorText = "";
-
     }
 }

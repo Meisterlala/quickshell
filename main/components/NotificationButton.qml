@@ -6,21 +6,30 @@ Rectangle {
     property string text: ""
     property string icon: ""
     property bool checked: false
-    signal clicked()
+    signal clicked
 
     implicitWidth: content.implicitWidth + 20
     implicitHeight: 34
     radius: 8
-    color: checked ? theme.alpha(theme.sky, mouse.pressed ? 0.2 : 0.12)
-        : theme.alpha(theme.text, mouse.pressed ? 0.12 : mouse.containsMouse ? 0.08 : 0.035)
+    color: checked ? theme.alpha(theme.sky, mouse.pressed ? 0.2 : 0.12) : theme.alpha(theme.text, mouse.pressed ? 0.12 : mouse.containsMouse ? 0.08 : 0.035)
     opacity: enabled ? 1 : 0.35
     border.width: 1
     border.color: checked ? theme.alpha(theme.sky, 0.35) : theme.alpha(theme.text, mouse.containsMouse ? 0.16 : 0.07)
 
-    Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on border.color { ColorAnimation { duration: 120 } }
+    Behavior on color {
+        ColorAnimation {
+            duration: 120
+        }
+    }
+    Behavior on border.color {
+        ColorAnimation {
+            duration: 120
+        }
+    }
 
-    Theme { id: theme }
+    Theme {
+        id: theme
+    }
     Row {
         id: content
         anchors.centerIn: parent

@@ -24,5 +24,7 @@ ModulePill {
         else if (button === Qt.MiddleButton)
             service.clear();
     }
-    Theme { id: theme }
+    Theme {
+        id: theme
+    }
 }

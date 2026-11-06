@@ -2,48 +2,59 @@ pragma ComponentBehavior: Bound
 
 import ".."
 import "../components"
+import "../services"
 import QtQuick
 import QtQuick.Controls as Controls
-import Quickshell
-import Quickshell.Io
 import Quickshell.Services.Mpris
 
 PopupSurface {
     id: root
     required property var service
-    property var controls: ({ inhibited: false, monitor: "unknown" })
+    property var controls: ({
+            inhibited: false,
+            monitor: "unknown"
+        })
     property string controlError: ""
     implicitHeight: topContent.implicitHeight + 32 + (service.history.length ? 12 + list.contentHeight : 0)
     color: theme.alpha(theme.mantle, 0.98)
     radius: 16
 
     function refreshControls(action) {
-        if (!controlReader.running)
-            controlReader.exec(["python3", Quickshell.shellPath("scripts/notification_controls.py"), action || "status"]);
+        if (HelperBuild.ready && !controlReader.running)
+            controlReader.run([action || "status"]);
     }
 
     Component.onCompleted: refreshControls("status")
 
-    Theme { id: theme }
-    Process {
+    Connections {
+        target: HelperBuild
+        function onReadyChanged() {
+            if (HelperBuild.ready)
+                root.refreshControls("status");
+        }
+    }
+
+    Theme {
+        id: theme
+    }
+    HelperProcess {
         id: controlReader
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const result = JSON.parse(text);
-                    root.controlError = result.error || "";
-                    if (!root.controlError)
-                        root.controls = result;
-                } catch (error) {
-                    root.controlError = "Could not read control state";
-                }
+        helper: "notification-controls"
+        onOutput: text => {
+            try {
+                const result = JSON.parse(text);
+                root.controlError = result.error || "";
+                if (!root.controlError)
+                    root.controls = result;
+            } catch (error) {
+                root.controlError = "Could not read control state";
             }
         }
     }
     Timer {
         interval: 5000
         repeat: true
-        running: root.visible
+        running: root.visible && HelperBuild.ready
         onTriggered: root.refreshControls("status")
     }
     MouseArea {
@@ -73,6 +84,7 @@ PopupSurface {
         }
         Controls.MenuItem {
             text: "Stay awake"
+            visible: HelperBuild.ready
             checkable: true
             checked: !!root.controls.inhibited
             enabled: !controlReader.running
@@ -80,6 +92,7 @@ PopupSurface {
         }
         Controls.MenuItem {
             text: "Second monitor off"
+            visible: HelperBuild.ready
             checkable: true
             checked: root.controls.monitor === "off"
             enabled: !controlReader.running && ["on", "off"].includes(root.controls.monitor)
@@ -115,6 +128,7 @@ PopupSurface {
             }
             NotificationButton {
                 icon: "󰒲"
+                visible: HelperBuild.ready
                 text: "Stay awake"
                 checked: !!root.controls.inhibited
                 enabled: !controlReader.running
@@ -122,6 +136,7 @@ PopupSurface {
             }
             NotificationButton {
                 icon: "󰍹"
+                visible: HelperBuild.ready
                 text: "Screen 2" + (["on", "off"].includes(root.controls.monitor) ? " " + root.controls.monitor : "")
                 checked: root.controls.monitor === "off"
                 enabled: !controlReader.running && ["on", "off"].includes(root.controls.monitor)
@@ -136,7 +151,7 @@ PopupSurface {
         Text {
             width: parent.width
             visible: text.length > 0
-            text: root.controlError || root.service.persistenceError
+            text: (HelperBuild.ready ? root.controlError : "") || root.service.persistenceError
             textFormat: Text.PlainText
             wrapMode: Text.Wrap
             color: theme.red
@@ -147,6 +162,7 @@ PopupSurface {
             width: parent.width
             spacing: 6
             Repeater {
+                id: playerCards
                 model: Mpris.players
                 Rectangle {
                     id: playerCard
@@ -201,13 +217,13 @@ PopupSurface {
             }
         }
         Rectangle {
-            visible: Mpris.players.values.length > 0 && root.service.history.length > 0
+            visible: playerCards.count > 0 && root.service.history.length > 0
             width: parent.width
             height: 1
             color: theme.surface1
         }
         Text {
-            visible: root.service.history.length === 0 && Mpris.players.values.length === 0
+            visible: root.service.history.length === 0 && playerCards.count === 0
             text: "No notifications"
             color: theme.subtext0
             font.family: theme.fontFamily

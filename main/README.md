@@ -32,6 +32,12 @@ mutes/unmutes and refreshes the indicator.
 
 This config intentionally does not modify Hyprland autostart yet. Keep `waybar.service` enabled until the Quickshell bar has been tested.
 
+## Go helpers
+
+Install Go 1.23+; `helpers/qs-helper` builds and caches the binary automatically.
+Copy `helpers/.env.example` to `helpers/.env` for shared configuration.
+QML modules use `HelperProcess` with a command name and `run(args)`.
+
 ## Clock calendar
 
 Hover the clock to open the calendar; moving into the popup keeps it open.
@@ -45,16 +51,15 @@ occurrences). Browsing other months keeps the selected date and its events.
 The month grid is adapted from [Nebula Shell](https://github.com/Linuxury/nebula-shell/blob/main/components/bar/Clock.qml)
 under its [MIT license](licenses/nebula-shell-MIT.txt).
 
-`main/scripts/thunderbird_calendar.py` requires `python-dateutil` and reads the
-default Thunderbird profile's `calendar-data/local.sqlite` and `cache.sqlite`.
+The Go `calendar` subcommand reads the default Thunderbird profile's
+`calendar-data/local.sqlite` and `cache.sqlite` using a pure-Go SQLite driver.
 Enable **Offline Support** in Thunderbird's calendar properties for synced
 calendars. Thunderbird remains responsible for syncing; the helper never reads
 credentials, contacts remote servers, or writes to the profile. It reads private
 temporary snapshots including SQLite's WAL, so Thunderbird can stay open.
 Recurrences, exceptions, all-day dates, timezones and incomplete dated tasks are
 supported. Uncached ICS files/feeds are not read directly. **Sleep as Android**
-is excluded from both the agenda and date markers (see `EXCLUDED_CALENDARS` in
-the helper). Disabled calendars and cancelled/deleted/completed items are omitted.
+is excluded from both the agenda and date markers. Disabled calendars and cancelled/deleted/completed items are omitted.
 
 Data refreshes on opening, changing the month, and once per minute while open.
 No calendar process or polling timer runs while the popup is closed. QML changes

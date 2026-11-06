@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Build once on demand, then replace the wrapper process with the cached helper.
+set -euo pipefail
+umask 077
+
+source_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+cache_root=${XDG_CACHE_HOME:-$HOME/.cache}/quickshell
+identity=$(printf '%s' "$source_dir" | sha256sum)
+cache=$cache_root/helper-${identity:0:16}
+
+# A small text protocol lets QML watch build state without needing Go or Python.
+# Lines: building/ready/error, message, build log path, state change Unix time.
+status() {
+    [[ -d "$cache" ]] || return 0
+    local temporary
+    temporary=$(mktemp "$cache/state.XXXXXXXX") || return 0
+    printf '%s\n%s\n%s\n%s\n' "$1" "$2" "$cache/build.log" "$(date +%s)" > "$temporary"
+    mv -f -- "$temporary" "$cache/build-state"
+}
+
+fail() {
+    local message=$1
+    status error "$message"
+    printf '%s\n' "$message" >&2
+    # A superset of the existing error contracts, so every JSON consumer can
+    # display the actual build/install problem instead of a JSON parsing error.
+    printf '{"error":"%s","state":"error","status":"error","visible":true,"ok":false,"systemUnits":null,"userUnits":null}\n' "$message"
+    exit 1
+}
+
+run_only=false
+if [[ ${1:-} == --run ]]; then
+    run_only=true
+    shift
+fi
+
+mkdir -p -- "$cache" || fail 'Cannot create the Quickshell helper cache.'
+if [[ ${1:-} == --status-path ]]; then
+    printf '%s\n' "$cache/build-state"
+    exit 0
+fi
+# Hash source contents, not mtimes: pulls, restored backups, and deleted files
+# must all invalidate the cache. No Go invocation is needed on the warm path.
+fingerprint() {
+    (
+        cd -- "$source_dir"
+        find . -type f \( -name '*.go' -o -name go.mod -o -name go.sum \) -print0 |
+            LC_ALL=C sort -z | xargs -0 sha256sum
+        sha256sum -- "$source_dir/qs-helper"
+        uname -sm
+    ) | sha256sum | cut -d ' ' -f 1
+}
+inputs=$(fingerprint) || fail 'Cannot fingerprint the Quickshell helper sources.'
+binary=$cache/qs-helper
+stamp=$cache/inputs
+fresh() { [[ -x "$binary" && -f "$stamp" && $(< "$stamp") == "$inputs" ]]; }
+
+# Widgets never own builds: hiding/cancelling one must not kill the compiler.
+# Exit 75 asks the shared QML supervisor to prepare the helper independently.
+if "$run_only"; then
+    fresh || exit 75
+    export QUICKSHELL_HELPER_DIR=$source_dir
+    exec "$binary" "$@"
+fi
+
+if ! fresh || [[ ! -f "$cache/build-state" || $(head -n 1 -- "$cache/build-state") != ready ]]; then
+    command -v flock >/dev/null 2>&1 || fail 'Quickshell helper builds require flock (install util-linux).'
+    exec 9> "$cache/build.lock"
+    flock 9 || fail 'Cannot lock the Quickshell helper build.'
+    # Another widget may have completed the build while we waited.
+    inputs=$(fingerprint) || fail 'Cannot fingerprint the Quickshell helper sources.'
+    if ! fresh; then
+        command -v go >/dev/null 2>&1 || fail 'Quickshell helpers need Go to build. Install Go (Arch: pacman -S go), then refresh.'
+        # Retry failed builds after a short cooldown, not on every polling tick.
+        if [[ ${1:-} != --prepare && -f "$cache/failed-inputs" && $(< "$cache/failed-inputs") == "$inputs" && -f "$cache/failed-at" ]]; then
+            read -r failed_at < "$cache/failed-at" || failed_at=0
+            if [[ $failed_at =~ ^[0-9]+$ ]] && (( $(date +%s) - failed_at < 60 )); then
+                fail 'Quickshell Go helper build failed. See the helper cache build.log; retrying within one minute.'
+            fi
+        fi
+        rm -f -- "$cache"/qs-helper.????????
+        : > "$cache/build.log"
+        status building 'Starting Go compiler…'
+        temporary=$(mktemp "$cache/qs-helper.XXXXXXXX")
+        cleanup() {
+            local code=$?
+            rm -f -- "$temporary"
+            if (( code != 0 )) && [[ $(head -n 1 -- "$cache/build-state") == building ]]; then
+                status error 'Go helper build was interrupted. Retry to continue.'
+            fi
+        }
+        trap cleanup EXIT
+        trap 'exit 143' TERM
+        trap 'exit 130' INT
+        if ! (cd -- "$source_dir" && CGO_ENABLED=0 GOOS= GOARCH= go build -v -mod=readonly -trimpath -o "$temporary" ./cmd/qs-helper) > "$cache/build.log" 2>&1; then
+            printf '%s\n' "$inputs" > "$cache/failed-inputs"
+            date +%s > "$cache/failed-at"
+            fail 'Could not compile the Go helper. Fix the error below, then Retry.'
+        fi
+        # Stamp the inputs from before the build. A mid-build source edit will
+        # invalidate this stamp on the next request.
+        mv -f -- "$temporary" "$binary"
+        printf '%s\n' "$inputs" > "$stamp"
+        rm -f -- "$cache/failed-inputs" "$cache/failed-at"
+        trap - EXIT TERM INT
+    fi
+    status ready ''
+    # Never let the helper or its child processes inherit/hold the build lock.
+    exec 9>&-
+fi
+if [[ ${1:-} == --prepare ]]; then
+    exit 0
+fi
+
+export QUICKSHELL_HELPER_DIR=$source_dir
+exec "$binary" "$@"
