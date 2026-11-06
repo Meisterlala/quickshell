@@ -15,6 +15,7 @@ Scope {
     property int popupLimit: 4
     readonly property var entries: JSON.parse(state.entriesJson)
     readonly property alias doNotDisturb: state.dnd
+    readonly property alias alwaysOnTop: state.alwaysOnTop
     readonly property var history: entries.filter(entry => !entry.transient)
     readonly property var popups: doNotDisturb || centerOpen ? []
         : entries.filter(entry => entry.popup).slice(0, popupLimit)
@@ -22,6 +23,7 @@ Scope {
     readonly property string stateDirectory: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/quickshell"
     property bool directoryReady: false
     property bool dndTouched: false
+    property bool alwaysOnTopTouched: false
     property string persistenceError: ""
 
     // Only plain data enters models and persistence. Live QObjects stay in this
@@ -37,6 +39,7 @@ Scope {
         // Persist JSON, then parse it in the current engine instead.
         property string entriesJson: "[]"
         property bool dnd: false
+        property bool alwaysOnTop: false
         property string session: String(Date.now())
         property int serial: 0
         property bool initialized: false
@@ -60,6 +63,12 @@ Scope {
         state.dnd = enabled;
         if (enabled)
             dismissPopups();
+        saveSoon();
+    }
+
+    function setAlwaysOnTop(enabled) {
+        alwaysOnTopTouched = true;
+        state.alwaysOnTop = enabled;
         saveSoon();
     }
 
@@ -239,6 +248,8 @@ Scope {
                 if (saved.dnd)
                     dismissPopups();
             }
+            if (!alwaysOnTopTouched)
+                state.alwaysOnTop = saved.alwaysOnTop;
             trim();
         } catch (error) {
             persistenceError = "Could not read saved notification history";
@@ -274,6 +285,7 @@ Scope {
         id: saveTimer
         interval: 200
         onTriggered: stateFile.setText(JSON.stringify({ version: 1, dnd: state.dnd,
+            alwaysOnTop: state.alwaysOnTop,
             entries: Logic.persistentEntries(root.entries, root.historyLimit) }) + "\n")
     }
 

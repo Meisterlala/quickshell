@@ -74,7 +74,8 @@ Scope {
                 margins { top: 54; right: 16 }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notifications"
-                WlrLayershell.layer: WlrLayer.Overlay
+                // Only cover fullscreen apps when explicitly enabled.
+                WlrLayershell.layer: root.service.alwaysOnTop ? WlrLayer.Overlay : WlrLayer.Top
                 // Toasts must never interrupt typing, even on hover/click.
                 // Keyboard interaction belongs in the explicitly opened center.
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
@@ -111,7 +112,8 @@ Scope {
                 margins { top: 54; right: 16 }
                 exclusionMode: ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell-notification-center"
-                WlrLayershell.layer: WlrLayer.Overlay
+                // Apply the same preference to the notification center.
+                WlrLayershell.layer: root.service.alwaysOnTop ? WlrLayer.Overlay : WlrLayer.Top
                 // Opening the center must not take focus from the current app.
                 // OnDemand still permits explicitly clicking an inline reply.
                 WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand

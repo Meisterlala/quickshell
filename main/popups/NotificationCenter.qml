@@ -66,6 +66,12 @@ PopupSurface {
             onTriggered: root.service.setDnd(!root.service.doNotDisturb)
         }
         Controls.MenuItem {
+            text: "Always on Top"
+            checkable: true
+            checked: root.service.alwaysOnTop
+            onTriggered: root.service.setAlwaysOnTop(!root.service.alwaysOnTop)
+        }
+        Controls.MenuItem {
             text: "Stay awake"
             checkable: true
             checked: !!root.controls.inhibited
@@ -101,6 +107,11 @@ PopupSurface {
                 text: "DND"
                 checked: root.service.doNotDisturb
                 onClicked: root.service.setDnd(!root.service.doNotDisturb)
+            }
+            NotificationButton {
+                text: "Always on Top"
+                checked: root.service.alwaysOnTop
+                onClicked: root.service.setAlwaysOnTop(!root.service.alwaysOnTop)
             }
             NotificationButton {
                 icon: "󰒲"

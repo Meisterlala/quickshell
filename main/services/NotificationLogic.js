@@ -52,6 +52,7 @@ function parseState(raw, limit) {
     const entries = Array.isArray(value.entries) ? value.entries : [];
     return {
         dnd: value.dnd === true,
+        alwaysOnTop: value.alwaysOnTop === true,
         entries: entries.filter(entry => entry && typeof entry.uid === "string"
             && typeof entry.summary === "string" && typeof entry.body === "string"
             && Number.isFinite(entry.timestamp) && !entry.transient)
