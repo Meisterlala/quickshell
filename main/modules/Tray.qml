@@ -6,14 +6,15 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
+import Quickshell.Wayland
 
 Rectangle {
-    // Add lowercase tray ids or titles here, for example: "steam"
-
     id: root
 
     required property var barWindow
+    // Add lowercase tray ids or titles here, for example: "steam".
     property var ignoredTrayItems: ["udiskie"]
+    property var openItem: null
     readonly property bool hasVisibleItems: trayRow.implicitWidth > 0
 
     function itemField(item, field) {
@@ -31,9 +32,7 @@ Rectangle {
 
     function isIgnored(item) {
         const values = [trayField(item, "id"), trayField(item, "title"), trayField(item, "tooltipTitle"), trayField(item, "name")];
-        return ignoredTrayItems.some(ignored => {
-            return values.includes(String(ignored).toLowerCase());
-        });
+        return ignoredTrayItems.some(ignored => values.includes(String(ignored).toLowerCase()));
     }
 
     implicitWidth: hasVisibleItems ? trayRow.implicitWidth + 16 : 0
@@ -43,19 +42,23 @@ Rectangle {
     border.color: hasVisibleItems ? trayTheme.alpha(trayTheme.text, 0.1) : "transparent"
     border.width: hasVisibleItems ? 1 : 0
 
-    Theme {
-        id: trayTheme
+    Theme { id: trayTheme }
+
+    // Layer-shell popups inherit keyboard interactivity from their parent bar.
+    Binding {
+        target: root.barWindow ? root.barWindow.WlrLayershell : null
+        property: "keyboardFocus"
+        value: WlrKeyboardFocus.OnDemand
+        when: !!root.openItem
+        restoreMode: Binding.RestoreBindingOrValue
     }
 
     Row {
         id: trayRow
-
         anchors.centerIn: parent
         spacing: 8
 
         Repeater {
-            id: trayRepeater
-
             model: SystemTray.items
 
             Item {
@@ -66,13 +69,15 @@ Rectangle {
                 readonly property string tooltipTitle: root.itemField(modelData, "tooltipTitle") || root.itemField(modelData, "title") || root.itemField(modelData, "name") || root.itemField(modelData, "id")
                 readonly property string tooltipDescription: root.itemField(modelData, "tooltipDescription") || root.itemField(modelData, "tooltip")
                 readonly property string tooltipText: tooltipDescription.length > 0 && tooltipDescription !== tooltipTitle ? tooltipTitle + "\n" + tooltipDescription : tooltipTitle
-                property bool menuOpen: false
+                readonly property bool menuOpen: root.openItem === trayItem
+                Component.onDestruction: {
+                    if (root.openItem === trayItem)
+                        root.openItem = null;
+                }
 
                 function displayMenu() {
-                    if (!modelData.hasMenu)
-                        return;
-
-                    menuOpen = !menuOpen;
+                    if (modelData.hasMenu)
+                        root.openItem = menuOpen ? null : trayItem;
                 }
 
                 visible: !ignored
@@ -88,7 +93,6 @@ Rectangle {
 
                 MouseArea {
                     id: iconMouse
-
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                     hoverEnabled: true
@@ -104,7 +108,6 @@ Rectangle {
 
                 PopupWindow {
                     id: tooltipWindow
-
                     readonly property int margin: 8
                     readonly property int maxTooltipWidth: root.barWindow ? Math.min(420, Math.max(180, root.barWindow.width - margin * 2)) : 300
 
@@ -120,7 +123,7 @@ Rectangle {
                     implicitHeight: tooltipLabel.implicitHeight + 20
                     color: "transparent"
                     grabFocus: false
-                    visible: root.barWindow && !trayItem.ignored && !trayItem.menuOpen && iconMouse.containsMouse && trayItem.tooltipText.length > 0
+                    visible: root.barWindow && !trayItem.ignored && !root.openItem && iconMouse.containsMouse && trayItem.tooltipText.length > 0
 
                     PopupSurface {
                         anchors.fill: parent
@@ -128,7 +131,6 @@ Rectangle {
 
                         Text {
                             id: tooltipLabel
-
                             anchors.fill: parent
                             anchors.margins: 10
                             text: trayItem.tooltipText
@@ -141,158 +143,17 @@ Rectangle {
                     }
                 }
 
-                PopupWindow {
-                    id: menuWindow
-
-                    readonly property int outerMargin: 8
-                    readonly property int horizontalMargin: 4
-                    readonly property int entryHorizontalPadding: 12
-                    readonly property int entrySpacing: 8
-                    readonly property int entryHeight: 30
-                    readonly property int separatorWidth: 164
-                    readonly property int separatorHeight: 9
-                    readonly property int iconSize: 16
-                    readonly property int targetWidth: Math.round(root.barWindow.width * 0.33)
-                    readonly property int maxTextWidth: targetWidth - outerMargin * 2 - entryHorizontalPadding * 2
-
+                TrayMenu {
+                    menu: trayItem.modelData.menu
+                    anchorHovered: iconMouse.containsMouse
                     anchor.window: root.barWindow
-                    anchor.rect.x: Math.max(outerMargin, Math.min(root.barWindow.width - width - outerMargin, trayItem.mapToItem(null, 0, 0).x))
-                    anchor.rect.y: root.barWindow.height + outerMargin
-                    implicitWidth: Math.max(220, Math.min(targetWidth, menuContent.implicitWidth + horizontalMargin * 2))
-                    implicitHeight: menuContent.implicitHeight + outerMargin * 2
-                    color: "transparent"
-                    visible: !trayItem.ignored && trayItem.menuOpen
-                    grabFocus: false
-                    onVisibleChanged: {
-                        if (!visible)
-                            trayItem.menuOpen = false;
-                    }
-
-                    PopupSurface {
-                        anchors.fill: parent
-
-                        Column {
-                            id: menuContent
-
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.topMargin: menuWindow.outerMargin
-                            anchors.bottomMargin: menuWindow.outerMargin
-                            anchors.leftMargin: menuWindow.horizontalMargin
-                            anchors.rightMargin: menuWindow.horizontalMargin
-
-                            Repeater {
-                                model: menuOpener.children
-
-                                Rectangle {
-                                    id: menuEntry
-
-                                    required property var modelData
-                                    readonly property bool hasCheckmark: modelData.checkState === Qt.Checked
-                                    readonly property bool hasIcon: modelData.icon.length > 0
-                                    readonly property int leadingWidth: (hasCheckmark ? checkmark.implicitWidth + menuWindow.entrySpacing : 0) + (hasIcon ? menuWindow.iconSize + menuWindow.entrySpacing : 0)
-                                    readonly property int trailingWidth: modelData.hasChildren ? menuWindow.entrySpacing + arrow.implicitWidth : 0
-
-                                    implicitWidth: modelData.isSeparator ? menuWindow.separatorWidth : menuWindow.entryHorizontalPadding * 2 + leadingWidth + Math.min(menuWindow.maxTextWidth, title.implicitWidth) + trailingWidth
-                                    width: menuContent.width
-                                    height: modelData.isSeparator ? menuWindow.separatorHeight : menuWindow.entryHeight
-                                    radius: 7
-                                    color: entryMouse.containsMouse && modelData.enabled && !modelData.isSeparator ? theme.alpha(theme.surface1, 0.85) : "transparent"
-
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        height: 1
-                                        visible: menuEntry.modelData.isSeparator
-                                        color: theme.alpha(theme.text, 0.12)
-                                    }
-
-                                    Text {
-                                        id: checkmark
-
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: menuWindow.entryHorizontalPadding
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: menuEntry.hasCheckmark ? "✓" : ""
-                                        visible: menuEntry.hasCheckmark && !menuEntry.modelData.isSeparator
-                                        color: theme.green
-                                        font.family: theme.fontFamily
-                                        font.pixelSize: theme.menuFontPixelSize
-                                    }
-
-                                    IconImage {
-                                        id: icon
-
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: menuWindow.entryHorizontalPadding + (menuEntry.hasCheckmark ? checkmark.implicitWidth + menuWindow.entrySpacing : 0)
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: menuWindow.iconSize
-                                        height: menuWindow.iconSize
-                                        source: menuEntry.modelData.icon
-                                        visible: menuEntry.hasIcon && !menuEntry.modelData.isSeparator
-                                    }
-
-                                    Text {
-                                        id: title
-
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: menuWindow.entryHorizontalPadding + menuEntry.leadingWidth
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: menuWindow.entryHorizontalPadding + menuEntry.trailingWidth
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: menuEntry.modelData.text
-                                        visible: !menuEntry.modelData.isSeparator
-                                        color: menuEntry.modelData.enabled ? theme.text : theme.overlay1
-                                        font.family: theme.fontFamily
-                                        font.pixelSize: theme.menuFontPixelSize
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Text {
-                                        id: arrow
-
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: menuWindow.entryHorizontalPadding
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: menuEntry.modelData.hasChildren ? "›" : ""
-                                        visible: menuEntry.modelData.hasChildren && !menuEntry.modelData.isSeparator
-                                        color: theme.subtext0
-                                        font.family: theme.fontFamily
-                                        font.pixelSize: theme.barFontPixelSize
-                                    }
-
-                                    MouseArea {
-                                        id: entryMouse
-
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        enabled: menuEntry.modelData.enabled && !menuEntry.modelData.isSeparator
-                                        onClicked: {
-                                            if (menuEntry.modelData.hasChildren) {
-                                                const position = menuEntry.mapToItem(null, menuEntry.width, 0);
-                                                menuEntry.modelData.display(root.barWindow, position.x, position.y);
-                                            } else {
-                                                trayItem.menuOpen = false;
-                                                menuEntry.modelData.triggered();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    QsMenuOpener {
-                        id: menuOpener
-
-                        menu: trayItem.modelData.menu
-                    }
-
-                    Theme {
-                        id: theme
+                    anchor.rect.x: root.barWindow ? Math.max(8, Math.min(root.barWindow.width - width - 8, trayItem.mapToItem(null, 0, 0).x)) : 0
+                    anchor.rect.y: root.barWindow ? root.barWindow.height + 8 : 0
+                    anchor.adjustment: PopupAdjustment.SlideX | PopupAdjustment.SlideY
+                    visible: !!root.barWindow && !trayItem.ignored && trayItem.menuOpen
+                    onDismissed: {
+                        if (root.openItem === trayItem)
+                            root.openItem = null;
                     }
                 }
             }
