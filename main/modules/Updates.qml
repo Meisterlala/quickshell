@@ -18,6 +18,9 @@ ClippingRectangle {
     property string moduleName: "updates"
     property string updateCommand: "ghostty -e bash -lc 'paru -Syu; echo; read -rp \"Press Enter to close...\"'"
     property int count: 0
+    property bool offlineQueued: false
+    property int offlineCount: -1
+    property var offlinePackages: ({})
     property string state: "updated"
     property var counts: ({})
     property var items: []
@@ -84,6 +87,9 @@ ClippingRectangle {
         try {
             const parsed = ModuleData.parseObject(trimmed);
             count = Number(parsed.count || 0);
+            offlineQueued = Boolean(parsed.offlineQueued || false);
+            offlineCount = parsed.offlineCount === undefined ? -1 : Number(parsed.offlineCount);
+            offlinePackages = parsed.offlinePackages || ({});
             state = String(parsed.state || "normal");
             counts = parsed.counts || ({});
             items = parsed.items || [];
@@ -112,7 +118,7 @@ ClippingRectangle {
     border.color: hasError ? theme.alpha(theme.red, 0.72) : theme.alpha(theme.text, 0.1)
     border.width: 1
     contentUnderBorder: true
-    visible: moduleVisible && (hasUpdates || hasError)
+    visible: moduleVisible && (hasUpdates || offlineQueued || hasError)
 
     Theme {
         id: theme
@@ -129,6 +135,7 @@ ClippingRectangle {
             color: theme.text
             font.family: theme.fontFamily
             font.pixelSize: theme.barFontPixelSize
+            visible: root.hasError || !root.offlineQueued
             text: root.hasError ? "err" : String(root.count)
             textFormat: Text.PlainText
         }
@@ -201,7 +208,8 @@ ClippingRectangle {
                                 color: theme.subtext0
                                 font.family: theme.fontFamily
                                 font.pixelSize: theme.tooltipFontPixelSize
-                                text: root.stale ? "Last successful check · current check unavailable" : root.hasError ? "Some update sources could not be checked" : "Left-click to run paru -Syu"
+                                text: root.offlineQueued ? (root.offlineCount >= 0 ? `Offline update scheduled — ${root.offlineCount} package${root.offlineCount === 1 ? "" : "s"} to install on the next reboot` : "Offline update scheduled — will install on the next reboot") : root.stale ? "Last successful check · current check unavailable" : root.hasError ? "Some update sources could not be checked" : "Left-click to run paru -Syu"
+                                wrapMode: Text.Wrap
                             }
                         }
                     }
@@ -270,6 +278,7 @@ ClippingRectangle {
                                 packageName: String(modelData.name || "")
                                 oldVersion: String(modelData.old || "")
                                 newVersion: String(modelData.new || "")
+                                scheduled: root.offlineQueued && root.offlinePackages[packageName] === newVersion
                             }
                         }
 
@@ -319,6 +328,7 @@ ClippingRectangle {
         required property string packageName
         required property string oldVersion
         required property string newVersion
+        required property bool scheduled
 
         height: 16
 
@@ -355,7 +365,8 @@ ClippingRectangle {
 
             anchors.left: packageLabel.right
             anchors.leftMargin: 14
-            anchors.right: parent.right
+            anchors.right: scheduledLabel.left
+            anchors.rightMargin: root.offlineQueued ? 14 : 0
             anchors.verticalCenter: parent.verticalCenter
             color: theme.subtext0
             elide: Text.ElideLeft
@@ -363,6 +374,21 @@ ClippingRectangle {
             font.pixelSize: 11
             horizontalAlignment: Text.AlignRight
             text: `${rowRoot.oldVersion} -> ${rowRoot.newVersion}`
+            textFormat: Text.PlainText
+        }
+
+        Text {
+            id: scheduledLabel
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.offlineQueued ? 92 : 0
+            visible: root.offlineQueued
+            color: rowRoot.scheduled ? theme.sky : theme.subtext0
+            font.family: theme.fontFamily
+            font.pixelSize: 11
+            horizontalAlignment: Text.AlignRight
+            text: rowRoot.scheduled ? "Scheduled" : ""
             textFormat: Text.PlainText
         }
     }
@@ -418,6 +444,9 @@ ClippingRectangle {
             refresh();
         else {
             count = 0;
+            offlineQueued = false;
+            offlineCount = -1;
+            offlinePackages = ({});
             items = [];
             counts = ({});
             stale = false;

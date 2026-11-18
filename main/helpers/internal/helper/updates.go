@@ -2,6 +2,7 @@ package helper
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -21,6 +22,46 @@ func parseUpgrades(raw string) []obj {
 	}
 	return result
 }
+// Preview the same transaction as pacman-offline without downloading or installing.
+func offlineUpdatePackages() map[string]string {
+	config, err := os.ReadFile("/etc/pacman.conf")
+	if err != nil {
+		return nil
+	}
+	lines := strings.Split(string(config), "\n")
+	exclude := regexp.MustCompile(`^Include *= */etc/pacman\.d/offline\.conf$`)
+	include := regexp.MustCompile(`^#Include *= */etc/pacman\.d/offline-include\.conf$`)
+	for i, line := range lines {
+		if exclude.MatchString(line) {
+			lines[i] = "#" + line
+		} else if include.MatchString(line) {
+			lines[i] = strings.TrimPrefix(line, "#")
+		}
+	}
+	file, err := os.CreateTemp("", "quickshell-offline-*.conf")
+	if err != nil {
+		return nil
+	}
+	defer os.Remove(file.Name())
+	_, err = file.WriteString(strings.Join(lines, "\n"))
+	closeErr := file.Close()
+	if err != nil || closeErr != nil {
+		return nil
+	}
+	code, out, _ := command(30*time.Second, []string{"LC_ALL=C"}, "pacman", "--config", file.Name(), "--sync", "--sysupgrade", "--print", "--print-format", "%n %v")
+	if code != 0 {
+		return nil
+	}
+	packages := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 {
+			packages[fields[0]] = fields[1]
+		}
+	}
+	return packages
+}
+
 func updates() obj {
 	timeout := time.Duration(envFloat("QUICKSHELL_UPDATES_TIMEOUT", 120) * float64(time.Second))
 	maxItems := int(envFloat("QUICKSHELL_UPDATES_MAX_ITEMS", 160))
@@ -158,6 +199,17 @@ func updates() obj {
 		payload["status"] = status
 	} else {
 		saveJSON(path, payload, 0600)
+	}
+	// Read after cache handling so queued state never comes from a stale check.
+	target, _ := os.Readlink("/system-update")
+	payload["offlineQueued"] = target == "/var/cache/pacman/pkg"
+	payload["offlineCount"] = -1
+	payload["offlinePackages"] = map[string]string{}
+	if payload["offlineQueued"] == true {
+		if packages := offlineUpdatePackages(); packages != nil {
+			payload["offlineCount"] = len(packages)
+			payload["offlinePackages"] = packages
+		}
 	}
 	return payload
 }
