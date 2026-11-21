@@ -119,6 +119,7 @@ PopupSurface {
         Text {
             width: parent.width
             text: root.entry.summary
+            visible: text.trim().length > 0
             textFormat: Text.PlainText
             color: theme.text
             font.family: theme.fontFamily
